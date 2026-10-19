@@ -85,9 +85,10 @@ const S={
   plans:store.get('plans',{}),
   checked:store.get('checked',{}),
   pantry:store.get('pantry',[]),
+  excl:store.get('excl',{}),
   tab:'hoy',off:0,ctype:'T',q:'',hsub:'ruleta',htype:'A',hq:'',ptype:'T'
 };
-function save(){store.set('sel',S.sel);store.set('plans',S.plans);store.set('checked',S.checked);store.set('pantry',S.pantry);}
+function save(){store.set('sel',S.sel);store.set('plans',S.plans);store.set('checked',S.checked);store.set('pantry',S.pantry);store.set('excl',S.excl);}
 const $=function(s){return document.querySelector(s);};
 
 /* ===================== UTILIDADES ===================== */
@@ -97,7 +98,8 @@ function shuffle(arr,r){var a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Ma
 function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function fd(d){return d.getDate()+'/'+(d.getMonth()+1);}
 function weekStart(o){var x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7)+(o===undefined?S.off:o)*7);return x;}
-function fitsSlot(m,slot){var o=m.ok[slot];return o!==undefined&&S.sel.every(function(t){return o.indexOf(t)>=0;});}
+function isEx(id,k){return (S.excl[k]||[]).indexOf(id)>=0;}
+function fitsSlot(m,slot){var o=m.ok[slot];return o!==undefined&&S.sel.every(function(t){return o.indexOf(t)>=0&&!isEx(m.id,t);});}
 function fits(m,slot){if(slot&&slot!=='T')return fitsSlot(m,slot);return ['A','C','M'].some(function(s){return fitsSlot(m,s);});}
 function pool(slot){return MEALS.filter(function(m){return fitsSlot(m,slot);});}
 function okAll(m){var s='';['A','C','M'].forEach(function(x){(m.ok[x]||'').split('').forEach(function(c){if(s.indexOf(c)<0)s+=c;});});return s;}
@@ -189,17 +191,39 @@ function viewSemana(){
 
 function viewComidas(){
   var h='<div class="tf" id="tf"></div><input type="text" id="cq" placeholder="Buscar comida o ingrediente…" oninput="S.q=this.value;renderCList()" value="'+S.q.replace(/"/g,'')+'"><div class="mut" id="ccount" style="margin-bottom:8px"></div><div id="clist"></div>';
-  h+=critHTML();
+  h+=exclHTML()+critHTML();
   $('#main').innerHTML=h;renderTF('tf','ctype','renderCList',true);renderCList();
+}
+function askExcl(id){
+  var m=MEALS.find(function(x){return x.id===id;});
+  var h='<div class="bar"><b>🚫 Excluir: '+m.name+'</b><button onclick="closeModal()">✕</button></div><div class="mut" style="margin-bottom:8px">¿Para quién?</div>';
+  PROFILES.forEach(function(p){h+='<label class="it"><input type="checkbox" class="exc" value="'+p.k+'" '+(S.sel.indexOf(p.k)>=0?'checked':'')+'><span>'+p.n+'</span></label>';});
+  h+='<div style="margin-top:12px"><button class="btn pri" onclick="doExcl('+id+')">Excluir</button><button class="btn" onclick="closeModal()">Cancelar</button></div>';
+  $('#mbox').innerHTML=h;$('#modal').classList.add('show');
+}
+function doExcl(id){
+  var bs=document.querySelectorAll('.exc');
+  for(var i=0;i<bs.length;i++){if(bs[i].checked){var k=bs[i].value;S.excl[k]=S.excl[k]||[];if(S.excl[k].indexOf(id)<0)S.excl[k].push(id);}}
+  save();closeModal();newWheel();render();
+}
+function unExcl(id,k){S.excl[k]=(S.excl[k]||[]).filter(function(x){return x!==id;});save();newWheel();render();}
+function exclHTML(){
+  var h='',tot=0;
+  PROFILES.forEach(function(p){
+    var l=(S.excl[p.k]||[]).map(function(id){return MEALS.find(function(m){return m.id===id;});}).filter(Boolean);
+    if(!l.length)return;tot+=l.length;
+    h+='<div class="cat">'+p.n+' ('+l.length+')</div>'+l.map(function(m){return '<div class="it"><span>'+m.name+'</span><button class="ic" style="margin-left:auto" onclick="unExcl('+m.id+',\''+p.k+'\')">Restaurar</button></div>';}).join('');
+  });
+  return '<details><summary>🚫 Comidas excluidas ('+tot+')</summary>'+(h||'<p>Todavía no excluiste ninguna.</p>')+'</details>';
 }
 function critHTML(){
   var L=function(t,u){return '<a href="'+u+'" target="_blank" rel="noopener">'+t+'</a>';};
   return '<details><summary>ℹ️ Criterios por persona (investigación)</summary>'+
   '<p><b>Abel</b> – plan bajo en carbohidratos y alto en grasa, sin gluten, sin legumbres ni maní; cenas sin vaca/cerdo; papa, batata y zapallo solo en almuerzos; fruta 1–2 por día, no de noche; cena antes de las 20:30–21.<br>'+
   '⚠️ Por el ácido úrico: se excluyen vísceras (hígado) y mariscos, y se prefieren lácteos, huevos, verduras y porciones moderadas de carne; evitar alcohol y azúcar/fructosa y tomar mucha agua ('+L('Mayo Clinic','https://www.mayoclinic.org/diseases-conditions/gout/in-depth/gout-diet/art-20048524')+'). Al empezar una dieta muy baja en carbohidratos el ácido úrico puede subir transitoriamente ('+L('Virta Health, fuente comercial','https://www.virtahealth.com/faq/keto-gout')+'): consultalo con tu médico o nutricionista.</p>'+
-  '<p><b>Belén</b> – alimentos reales, sin gluten, ≥2 huevos por comida principal, legumbres y pseudocereales, fruta ≤2/día. Las comidas son vegetarianas (huevo y lácteos sí). Cuidar hierro, B12 y proteína ('+L('Coeliac UK','https://www.coeliac.org.uk/')+').</p>'+
-  '<p><b>Dante</b> – solo preparaciones simples y conocidas; se enriquece sin forzar (ralladito nutritivo, semillas molidas, pancitos, chipá), misma estrategia en ambas casas, 2,5 l de agua y bajar de a poco las galletitas dulces. Se usan alimentos “puente” parecidos a los que ya acepta ('+L('food chaining, Akron Children’s','https://www.akronchildrens.org/')+'). Sin presionar ni engañar.</p>'+
-  '<p><b>Isa</b> – sin pauta propia: plan equilibrado según las Guías Alimentarias para la Población Argentina ('+L('GAPA','https://www.argentina.gob.ar/salud/alimentacion-saludable')+'): mitad verduras, proteínas, cereales integrales y agua. Cualquier comida sin vísceras.</p>'+
+  '<p><b>Belén</b> – alimentos reales, sin gluten, ≥2 huevos por comida principal, legumbres y pseudocereales, fruta ≤2/día. No come carne ni pescado: solo huevo y lácteos. Cuidar hierro, B12 y proteína ('+L('Coeliac UK','https://www.coeliac.org.uk/')+').</p>'+
+  '<p><b>Dante</b> – solo preparaciones simples y conocidas; se enriquece sin forzar (ralladito nutritivo, semillas molidas, pancitos, chipá), misma estrategia en ambas casas, 2,5 l de agua y bajar de a poco las galletitas dulces. Hoy acepta pocas cosas, casi todo rebozado; la idea es ir saliendo de eso de a poco con platos “puente” parecidos a lo que ya acepta ('+L('food chaining, Akron Children’s','https://www.akronchildrens.org/')+'). Sin presionar ni engañar.</p>'+
+  '<p><b>Isa</b> – 8 años, come de todo y sin pauta propia: plan equilibrado según las Guías Alimentarias para la Población Argentina ('+L('GAPA','https://www.argentina.gob.ar/salud/alimentacion-saludable')+'): mitad verduras, proteínas, cereales integrales y agua. Cualquier comida sin vísceras.</p>'+
   '<p>Al elegir varias personas se muestran solo comidas que sirven a todas. Las reglas son automáticas por ingrediente y se pueden ajustar.</p></details>';
 }
 function renderTF(id,key,fn,all){
@@ -214,7 +238,7 @@ function renderCList(){
     return true;
   });
   $('#ccount').textContent=l.length+' comidas para '+S.sel.map(function(k){return PROFILES.find(function(p){return p.k===k;}).n;}).join(' + ');
-  $('#clist').innerHTML=l.map(function(m){return '<div class="card meal" onclick="showMeal('+m.id+')"><b>'+m.name+'</b>'+badges(m)+' <span class="mut">'+(m.type==='AC'?'Almuerzo o cena':SLOTN[m.type])+'</span></div>';}).join('')||'<div class="mut">No hay comidas que sirvan a todos los seleccionados con ese filtro.</div>';
+  $('#clist').innerHTML=l.map(function(m){return '<div class="card meal" onclick="showMeal('+m.id+')"><button class="ic" style="float:right;margin-left:8px" onclick="event.stopPropagation();askExcl('+m.id+')">🚫 Excluir</button><b>'+m.name+'</b>'+badges(m)+' <span class="mut">'+(m.type==='AC'?'Almuerzo o cena':SLOTN[m.type])+'</span></div>';}).join('')||'<div class="mut">No hay comidas que sirvan a todos los seleccionados con ese filtro.</div>';
 }
 
 function viewCompras(){
