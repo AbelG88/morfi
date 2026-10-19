@@ -383,7 +383,7 @@ function gOf(n){return G2[n]||n;}
 S.pantry=S.pantry.map(gOf).filter(function(v,i,a){return a.indexOf(v)===i;});
 function renderChips(){
   var q=S.hq.toLowerCase().trim(),map={};
-  MEALS.forEach(function(m){m.ings.forEach(function(i){if(OPCIONAL.indexOf(i.n)<0||G2[i.n])map[gOf(i.n)]=i.c;});});
+  MEALS.filter(function(m){return fits(m,S.ptype);}).forEach(function(m){m.ings.forEach(function(i){if(OPCIONAL.indexOf(i.n)<0||G2[i.n])map[gOf(i.n)]=i.c;});});
   var h='';
   Object.keys(CATS).forEach(function(c){
     var l=Object.keys(map).filter(function(n){return map[n]===c&&(!q||n.toLowerCase().indexOf(q)>=0);}).sort();
@@ -396,6 +396,7 @@ function renderRes(){
   var el=$('#pres');if(!el)return;
   if(!S.pantry.length){el.innerHTML='<div class="mut">Marcá lo que tenés y te armo opciones de menú. Sal, aceite y especias se dan por sabidos.</div>';return;}
   var need=Math.min(2,S.pantry.length);
+  var who=S.sel.map(function(k){return PROFILES.find(function(p){return p.k===k;}).n;}).join(' + ');
   var all=MEALS.filter(function(m){return fits(m,S.ptype);}).map(function(m){
     var req=m.ings.filter(function(i){return OPCIONAL.indexOf(i.n)<0;});
     var gs=[];req.forEach(function(i){var g=gOf(i.n);if(gs.indexOf(g)<0)gs.push(g);});
@@ -409,7 +410,7 @@ function renderRes(){
   var h='';
   if(ya.length)h+='<div class="cat ok">✅ Podés hacerlas ya ('+ya.length+')</div>'+ya.slice(0,25).map(card).join('');
   if(casi.length)h+='<div class="cat">🛒 Casi: te falta 1 o 2 cosas ('+casi.length+')</div>'+casi.slice(0,25).map(card).join('');
-  el.innerHTML=h||'<div class="mut">Con eso no encuentro comidas para este perfil. Probá sumar más ingredientes.</div>';
+  el.innerHTML='<div class="mut" style="margin-bottom:6px">Solo comidas que sirven para '+who+'. Un plato aparece si usa al menos '+need+' de lo que marcaste.</div>'+(h||'<div class="mut">Con eso no encuentro comidas para este perfil. Probá sumar más ingredientes o cambiar de perfil arriba.</div>');
 }
 
 /* ===================== NAV / PERFILES ===================== */
