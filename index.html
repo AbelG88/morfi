@@ -67,89 +67,13 @@ details{font-size:13px;color:var(--mut);margin-bottom:10px}
 <nav id="nav"></nav>
 <div id="modal" onclick="if(event.target===this)closeModal()"><div id="mbox"></div></div>
 
+<script src="data.js"></script>
 <script>
-/* ===================== DATOS ===================== */
-const PROFILES=[
-  {k:'a',n:'Abel',c:'#0d9488'},
-  {k:'b',n:'Belén',c:'#16a34a'},
-  {k:'d',n:'Dante',c:'#d97706'},
-  {k:'i',n:'Isa',c:'#0284c7'}
-];
+/* ===================== DATOS (ver data.js) ===================== */
 const CATS={C:'🥩 Carnes y pescados',V:'🥦 Verduras y frutas',L:'🥚 Lácteos y huevos',A:'🌾 Almacén y semillas'};
 const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const SLOTN={A:'Almuerzo',C:'Cena',M:'Merienda'};
-
-function ing(s){const p=s.split('|');return{n:p[0],q:parseFloat(p[1]),u:p[2],c:p[3]};}
-function M(id,name,type,tags,ings,tip){return{id:id,name:name,type:type,tags:tags,ings:ings.map(ing),tip:tip||''};}
-
-/* Cantidades por persona. tags: a=Abel b=Belén d=Dante i=Isa. type: A almuerzo, C cena, M merienda/desayuno */
-const MEALS=[
-M(1,'Pollo al horno con bastones de calabaza','A','aid',['Pollo|200|g|C','Zapallo/Calabaza|150|g|V','Cebolla|50|g|V'],'Dante: pisar la calabaza con 1 cdita de sésamo molido.'),
-M(2,'Milanesas de carne al horno con ensalada de rúcula y huevo','A','aid',['Carne vacuna|150|g|C','Huevo|2|u|L','Harina de almendras|30|g|A','Rúcula|40|g|V','Zanahoria|50|g|V'],'Dante: rebozar con almendras y semillas molidas.'),
-M(3,'Hamburguesas caseras con zapallo al horno y queso','A','aid',['Carne picada|150|g|C','Zapallo/Calabaza|150|g|V','Queso semiduro|30|g|L','Huevo|1|u|L'],'Dante: servir la hamburguesa pisada con palta.'),
-M(4,'Hígado encebollado con batata (fría)','A','a',['Hígado|150|g|C','Cebolla|100|g|V','Batata|150|g|V'],''),
-M(5,'Costillitas de cerdo con tortilla de zapallitos','A','ai',['Cerdo|200|g|C','Zapallito/Zucchini|150|g|V','Huevo|2|u|L'],''),
-M(6,'Pastel de papa o zapallo con carne picada y huevo duro','A','aid',['Carne picada|150|g|C','Papa|150|g|V','Huevo|1|u|L','Cebolla|50|g|V'],'Dante: sumar ralladito nutritivo.'),
-M(7,'Asado o vacío con ensalada de zanahoria, huevo y palta','A','aid',['Carne vacuna|200|g|C','Zanahoria|80|g|V','Huevo|1|u|L','Palta|0.5|u|V'],'Dante: carne desmenuzada con puré enriquecido con oliva.'),
-M(8,'Pollo con vegetales asados','A','ai',['Pollo|200|g|C','Zapallito/Zucchini|100|g|V','Zapallo/Calabaza|50|g|V','Cebolla|50|g|V'],''),
-M(9,'Wok de vegetales salteados con pollo','A','ai',['Pollo|150|g|C','Zapallito/Zucchini|100|g|V','Brócoli|80|g|V','Zanahoria|50|g|V','Cebolla|50|g|V'],''),
-M(10,'Tortilla de espinaca con churrasquito de carne','A','ai',['Espinaca|100|g|V','Huevo|2|u|L','Carne vacuna|120|g|C','Cebolla|50|g|V'],''),
-M(11,'Hamburguesas de pollo con tortilla de papas','A','aid',['Pollo|150|g|C','Papa|120|g|V','Huevo|2|u|L','Cebolla|50|g|V'],''),
-M(12,'Pollo desmenuzado con puré mixto y 2 huevos duros','AC','aid',['Pollo|150|g|C','Papa|100|g|V','Zapallo/Calabaza|100|g|V','Huevo|2|u|L'],'Dante: 1 cdita de sésamo molido en el puré.'),
-M(13,'Bastoncitos de pollo al horno con puré de calabaza','AC','aid',['Pollo|150|g|C','Huevo|1|u|L','Harina de almendras|30|g|A','Zapallo/Calabaza|150|g|V'],'Dante: rebozar con coco rallado o sésamo.'),
-M(14,'Ensalada completa (huevo, palta, papa fría, tomate) + hamburguesa de lentejas','A','bi',['Huevo|1|u|L','Palta|0.5|u|V','Papa|100|g|V','Tomate|80|g|V','Lentejas|60|g|A'],''),
-M(15,'Salteado de cebolla y calabaza con queso + hamburguesa de lentejas','A','bi',['Cebolla|100|g|V','Zapallo/Calabaza|100|g|V','Queso semiduro|40|g|L','Lentejas|60|g|A'],''),
-M(16,'Hamburguesas de legumbres con rúcula, tomate y palta','A','bi',['Garbanzos|60|g|A','Rúcula|40|g|V','Tomate|80|g|V','Palta|0.5|u|V','Huevo|1|u|L'],''),
-M(17,'Wok de vegetales y quinoa','A','bi',['Quinoa|60|g|A','Zapallito/Zucchini|100|g|V','Brócoli|80|g|V','Zanahoria|50|g|V','Cebolla|50|g|V'],''),
-M(18,'Ensalada de lechuga, tomate, palta y huevo + 1/4 de tortilla de papas','A','abi',['Lechuga|60|g|V','Tomate|80|g|V','Palta|0.5|u|V','Huevo|2|u|L','Papa|50|g|V'],''),
-M(19,'Tarta individual sin gluten de acelga y muzzarella','AC','bi',['Acelga|120|g|V','Muzzarella|60|g|L','Huevo|2|u|L','Harina de almendras|30|g|A','Cebolla|50|g|V'],''),
-M(20,'Guiso de lentejas con zapallo','A','bi',['Lentejas|80|g|A','Zapallo/Calabaza|100|g|V','Zanahoria|50|g|V','Cebolla|50|g|V','Morrón|30|g|V'],''),
-M(21,'Hamburguesas de mijo y zanahoria con ensalada','A','bdi',['Mijo|60|g|A','Zanahoria|80|g|V','Huevo|1|u|L','Cebolla|50|g|V','Lechuga|40|g|V'],''),
-M(22,'Risotto de hongos con arroz yamaní','A','bi',['Arroz yamaní|70|g|A','Hongos|100|g|V','Cebolla|50|g|V'],''),
-M(23,'Pescado al horno a la cebolla con crema y puré mixto','AC','aid',['Pescado blanco|200|g|C','Cebolla|80|g|V','Crema|30|ml|L','Papa|80|g|V','Zapallo/Calabaza|80|g|V'],''),
-M(24,'Milanesa de cerdo con zanahoria rallada y huevo','A','ai',['Cerdo|150|g|C','Harina de almendras|30|g|A','Zanahoria|80|g|V','Huevo|2|u|L'],''),
-M(25,'Omelette de zapallitos con queso y jamón','AC','aid',['Huevo|3|u|L','Zapallito/Zucchini|100|g|V','Queso semiduro|30|g|L','Jamón cocido|2|u|L'],''),
-M(26,'Pastel de zapallo con queso fresco derretido','AC','abdi',['Zapallo/Calabaza|200|g|V','Queso fresco|50|g|L','Huevo|2|u|L'],'Dante: sumar un hilo de aceite de chía.'),
-M(27,'Revuelto de huevos con vegetales y queso','AC','abdi',['Huevo|3|u|L','Zapallito/Zucchini|80|g|V','Cebolla|40|g|V','Queso fresco|30|g|L'],''),
-M(28,'Suprema de pollo grillada con vegetales al vapor','C','aid',['Pollo|180|g|C','Zapallito/Zucchini|100|g|V','Cebolla|50|g|V'],''),
-M(29,'Merluza al horno con revuelto de zapallitos y huevo','C','ai',['Pescado blanco|200|g|C','Zapallito/Zucchini|100|g|V','Huevo|2|u|L'],''),
-M(30,'Wok de vegetales con pechuga desmenuzada','C','ai',['Pollo|150|g|C','Brócoli|80|g|V','Zanahoria|50|g|V','Zapallito/Zucchini|80|g|V'],''),
-M(31,'Pescado a la cacerola con salsa de tomate, cebolla y morrón','C','ai',['Pescado blanco|200|g|C','Tomate|150|g|V','Cebolla|60|g|V','Morrón|50|g|V'],''),
-M(32,'Pescado al horno sobre cebollas y morrones asados','C','ai',['Pescado blanco|200|g|C','Cebolla|100|g|V','Morrón|80|g|V'],''),
-M(33,'Sopa crema de verduras con queso y huevos poché','C','abdi',['Zapallo/Calabaza|150|g|V','Zanahoria|80|g|V','Cebolla|50|g|V','Queso semiduro|30|g|L','Huevo|2|u|L'],''),
-M(34,'Salteado de zucchini, berenjena y morrón con queso y huevos','C','abi',['Zapallito/Zucchini|100|g|V','Berenjena|100|g|V','Morrón|50|g|V','Cebolla|50|g|V','Queso semiduro|30|g|L','Huevo|2|u|L'],''),
-M(35,'Omelette de zapallitos con queso y ciboulette','C','abdi',['Huevo|3|u|L','Zapallito/Zucchini|100|g|V','Queso semiduro|30|g|L'],''),
-M(36,'Revuelto de huevos con espinaca, cebolla, quinoa y queso fresco','C','bi',['Huevo|2|u|L','Espinaca|80|g|V','Cebolla|40|g|V','Quinoa|50|g|A','Queso fresco|40|g|L'],''),
-M(37,'Budín salado de acelga con queso y harina de almendras','C','abdi',['Acelga|120|g|V','Queso semiduro|40|g|L','Harina de almendras|30|g|A','Huevo|2|u|L'],''),
-M(38,'Revuelto de 3 huevos con zucchini, berenjena y semillas','C','abi',['Huevo|3|u|L','Zapallito/Zucchini|80|g|V','Berenjena|80|g|V','Semillas (mix)|10|g|A'],''),
-M(39,'Tortilla de espinaca y cebolla con ensalada','C','abi',['Espinaca|100|g|V','Cebolla|50|g|V','Huevo|3|u|L','Lechuga|50|g|V','Tomate|60|g|V'],''),
-M(40,'Ensalada de huevo, zanahoria rallada, lentejas y quinoa','C','bi',['Huevo|2|u|L','Zanahoria|80|g|V','Lentejas|50|g|A','Quinoa|40|g|A'],''),
-M(41,'Salteado de brócoli, zapallo, zapallitos y garbanzos con huevo','C','bi',['Brócoli|80|g|V','Zapallo/Calabaza|60|g|V','Zapallito/Zucchini|60|g|V','Garbanzos|50|g|A','Huevo|1|u|L','Cebolla|40|g|V'],''),
-M(42,'Tortilla de acelga con calabaza al horno y queso','C','abi',['Acelga|100|g|V','Huevo|2|u|L','Zapallo/Calabaza|120|g|V','Queso semiduro|30|g|L'],''),
-M(43,'Vegetales horneados con tortilla de papa','C','abdi',['Zapallito/Zucchini|100|g|V','Berenjena|80|g|V','Cebolla|50|g|V','Papa|100|g|V','Huevo|2|u|L'],''),
-M(44,'Fideos sin gluten con ralladito nutritivo y huevo','AC','bdi',['Fideos sin gluten|80|g|A','Huevo|1|u|L','Sésamo molido|15|g|A','Levadura nutricional|10|g|A','Queso semiduro|20|g|L'],'Ralladito nutritivo: sésamo molido + fruto seco + levadura nutricional + sal.'),
-M(45,'Pizza de fainá con queso y vegetales rallados','C','bdi',['Harina de garbanzos|70|g|A','Queso semiduro|40|g|L','Zanahoria|40|g|V','Zapallito/Zucchini|40|g|V'],''),
-M(46,'Ensalada de atún con huevo y palta','C','ai',['Atún|100|g|C','Huevo|2|u|L','Palta|0.5|u|V','Lechuga|50|g|V','Tomate|60|g|V'],''),
-M(47,'Curry de vegetales y garbanzos con arroz yamaní','C','bi',['Garbanzos|60|g|A','Arroz yamaní|60|g|A','Zapallito/Zucchini|80|g|V','Zanahoria|50|g|V','Cebolla|50|g|V'],''),
-M(48,'Hongos salteados con huevo y espinaca','C','abi',['Hongos|120|g|V','Espinaca|80|g|V','Huevo|2|u|L','Cebolla|40|g|V'],''),
-M(49,'Milanesa de pollo al horno con puré de calabaza','C','aid',['Pollo|150|g|C','Harina de almendras|30|g|A','Huevo|1|u|L','Zapallo/Calabaza|150|g|V'],'Dante: rebozado enriquecido con semillas molidas.'),
-M(50,'Huevos revueltos con queso fresco + 1 fruta','M','abdi',['Huevo|2|u|L','Queso fresco|30|g|L','Fruta de estación|1|u|V'],''),
-M(51,'Pancake de banana y coco','M','abdi',['Banana|1|u|V','Huevo|2|u|L','Coco rallado|20|g|A'],''),
-M(52,'2 huevos duros + 5 nueces + 1 fruta','M','abi',['Huevo|2|u|L','Nueces|15|g|A','Fruta de estación|1|u|V'],''),
-M(53,'Tostada de masa madre con palta y huevo','M','adi',['Pan de masa madre|1|u|A','Palta|0.5|u|V','Huevo|1|u|L'],''),
-M(54,'Yogur natural con fruta, frutos secos y semillas','M','abdi',['Yogur natural|150|g|L','Fruta de estación|1|u|V','Frutos secos|15|g|A','Semillas (mix)|10|g|A'],'Dante: frutos secos y semillas molidos.'),
-M(55,'Pancake salado de avena relleno de palta o queso','M','adi',['Huevo|1|u|L','Salvado de avena|15|g|A','Palta|0.5|u|V','Queso fresco|20|g|L'],''),
-M(56,'Chipá saludable (2 unidades) + fruta','M','bdi',['Fécula de mandioca|40|g|A','Batata|40|g|V','Ricota|15|g|L','Huevo|1|u|L','Queso semiduro|15|g|L','Fruta de estación|1|u|V'],''),
-M(57,'Budín de coco y zanahoria','M','abdi',['Zanahoria|40|g|V','Coco rallado|30|g|A','Huevo|1|u|L','Manteca|10|g|L'],''),
-M(58,'Brownie sin harinas + huevo duro','M','abdi',['Cacao amargo|12|g|A','Manteca|20|g|L','Huevo|2|u|L','Coco rallado|5|g|A'],''),
-M(59,'Pancitos sin harina con palta','M','abdi',['Huevo|1|u|L','Yogur natural|15|g|L','Harina de almendras|30|g|A','Palta|0.5|u|V'],''),
-M(60,'Crackers de semillas con queso','M','abdi',['Semillas (mix)|25|g|A','Queso semiduro|30|g|L'],''),
-M(61,'Talitas de queso (garbanzo y almendras)','M','bdi',['Harina de garbanzos|25|g|A','Harina de almendras|25|g|A','Queso semiduro|15|g|L','Huevo|0.5|u|L'],''),
-M(62,'Galleta de arroz con hummus y huevo','M','bi',['Galleta de arroz|2|u|A','Hummus|30|g|A','Huevo|1|u|L'],''),
-M(63,'Trufas de avena, ciruela y coco','M','di',['Salvado de avena|15|g|A','Ciruelas pasas|30|g|V','Coco rallado|15|g|A','Harina de almendras|15|g|A'],''),
-M(64,'Infusión con crema + tostada con palta y huevo','M','ai',['Crema|15|ml|L','Pan de masa madre|1|u|A','Palta|0.5|u|V','Huevo|1|u|L'],''),
-M(65,'Frutos secos + queso gouda + huevo duro','M','abi',['Frutos secos|20|g|A','Queso semiduro|30|g|L','Huevo|1|u|L'],'')
-];
+const MEALS=buildData().MEALS;
 
 /* ===================== ESTADO ===================== */
 const store={
@@ -161,7 +85,7 @@ const S={
   plans:store.get('plans',{}),
   checked:store.get('checked',{}),
   pantry:store.get('pantry',[]),
-  tab:'semana',off:0,ctype:'T',q:'',hsub:'ruleta',htype:'A',hq:'',ptype:'T'
+  tab:'hoy',off:0,ctype:'T',q:'',hsub:'ruleta',htype:'A',hq:'',ptype:'T'
 };
 function save(){store.set('sel',S.sel);store.set('plans',S.plans);store.set('checked',S.checked);store.set('pantry',S.pantry);}
 const $=function(s){return document.querySelector(s);};
@@ -172,10 +96,12 @@ function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15
 function shuffle(arr,r){var a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(r()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
 function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 function fd(d){return d.getDate()+'/'+(d.getMonth()+1);}
-function weekStart(){var x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7)+S.off*7);return x;}
-function fits(m){return S.sel.every(function(t){return m.tags.indexOf(t)>=0;});}
-function pool(slot){return MEALS.filter(function(m){return m.type.indexOf(slot)>=0&&fits(m);});}
-function badges(m){return PROFILES.filter(function(p){return m.tags.indexOf(p.k)>=0;}).map(function(p){return '<span class="pb" style="background:'+p.c+'">'+p.n[0]+'</span>';}).join('');}
+function weekStart(o){var x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7)+(o===undefined?S.off:o)*7);return x;}
+function fitsSlot(m,slot){var o=m.ok[slot];return o!==undefined&&S.sel.every(function(t){return o.indexOf(t)>=0;});}
+function fits(m,slot){if(slot&&slot!=='T')return fitsSlot(m,slot);return ['A','C','M'].some(function(s){return fitsSlot(m,s);});}
+function pool(slot){return MEALS.filter(function(m){return fitsSlot(m,slot);});}
+function okAll(m){var s='';['A','C','M'].forEach(function(x){(m.ok[x]||'').split('').forEach(function(c){if(s.indexOf(c)<0)s+=c;});});return s;}
+function badges(m){var t=okAll(m);return PROFILES.filter(function(p){return t.indexOf(p.k)>=0;}).map(function(p){return '<span class="pb" style="background:'+p.c+'">'+p.n[0]+'</span>';}).join('');}
 function fmtQ(q,u){
   if(u==='u')return Math.ceil(q-1e-9)+' u';
   if(u==='g'){var g=Math.ceil(q/10)*10;return g>=1000?(g/1000).toFixed(1).replace('.',',')+' kg':g+' g';}
@@ -188,11 +114,11 @@ function pkey(ws){return ws+'|'+S.sel.slice().sort().join('');}
 function getPlan(ws){var k=pkey(ws);if(!S.plans[k]){S.plans[k]={seed:1,over:{}};save();}return S.plans[k];}
 function weekMeals(ws){
   var p=getPlan(ws),out=[];
-  ['A','C'].forEach(function(slot){
+  ['A','C','M'].forEach(function(slot){
     var sh=shuffle(pool(slot),rng(hash(pkey(ws)+slot+p.seed)));
     for(var d=0;d<7;d++){
       var m=null,ov=p.over[d+slot];
-      if(ov){m=MEALS.find(function(x){return x.id===ov;})||null;if(m&&(m.type.indexOf(slot)<0||!fits(m)))m=null;}
+      if(ov){m=MEALS.find(function(x){return x.id===ov;})||null;if(m&&!fitsSlot(m,slot))m=null;}
       if(!m&&sh.length)m=sh[d%sh.length];
       out.push({d:d,slot:slot,m:m});
     }
@@ -234,7 +160,8 @@ function showMeal(id){
   h+='<div style="margin-bottom:8px">'+badges(m)+' <span class="mut">'+(m.type==='AC'?'Almuerzo o cena':SLOTN[m.type])+'</span></div>';
   h+='<div class="mut" style="margin-bottom:6px">Ingredientes para '+n+' '+(n===1?'persona':'personas')+':</div>';
   m.ings.forEach(function(i){h+='<div class="it"><span>'+i.n+'</span><span class="q">'+fmtQ(i.q*n,i.u)+'</span></div>';});
-  if(m.tip)h+='<div class="card" style="margin-top:10px;background:var(--soft)">💡 '+m.tip+'</div>';
+  var tp=m.tip;if(S.sel.indexOf('d')>=0&&!tp)tp='Dante: sumar ralladito nutritivo (sésamo molido + levadura nutricional + queso) y ofrecerlo sin presionar.';
+  if(tp)h+='<div class="card" style="margin-top:10px;background:var(--soft)">💡 '+tp+'</div>';
   $('#mbox').innerHTML=h;$('#modal').classList.add('show');
 }
 function closeModal(){$('#modal').classList.remove('show');}
@@ -250,7 +177,7 @@ function viewSemana(){
   for(var d=0;d<7;d++){
     var dt=new Date(ws);dt.setDate(ws.getDate()+d);
     h+='<div class="card day'+(iso(dt)===today?' today':'')+'"><div class="dn">'+DAYS[d]+' '+fd(dt)+'</div>';
-    ['A','C'].forEach(function(slot){
+    ['A','C','M'].forEach(function(slot){
       var x=wm.find(function(y){return y.d===d&&y.slot===slot;});
       if(x&&x.m)h+='<div class="slot"><div class="sl">'+SLOTN[slot]+'</div><div class="sn" onclick="showMeal('+x.m.id+')">'+x.m.name+'</div><button class="ic" onclick="swap(\''+wsI+'\','+d+',\''+slot+'\')">🔄</button></div>';
       else h+='<div class="slot"><div class="sl">'+SLOTN[slot]+'</div><div class="sn mut">Sin opciones para esta combinación</div></div>';
@@ -262,8 +189,18 @@ function viewSemana(){
 
 function viewComidas(){
   var h='<div class="tf" id="tf"></div><input type="text" id="cq" placeholder="Buscar comida o ingrediente…" oninput="S.q=this.value;renderCList()" value="'+S.q.replace(/"/g,'')+'"><div class="mut" id="ccount" style="margin-bottom:8px"></div><div id="clist"></div>';
-  h+='<details><summary>ℹ️ Criterios usados</summary><p><b>Abel:</b> sin legumbres, sin gluten, sin carne vacuna ni cerdo en cenas, mínimo 2 huevos por comida principal.<br><b>Belén:</b> vegetariano, sin gluten, con legumbres y pseudocereales.<br><b>Dante:</b> preparaciones simples y conocidas (puré, milanesa, pollo, huevo, chipá, fideos) para enriquecer sin forzar.<br><b>Isa:</b> sin pauta propia cargada: se asumió plan equilibrado.<br>Las etiquetas de cada comida son una interpretación; se pueden ajustar.</p></details>';
+  h+=critHTML();
   $('#main').innerHTML=h;renderTF('tf','ctype','renderCList',true);renderCList();
+}
+function critHTML(){
+  var L=function(t,u){return '<a href="'+u+'" target="_blank" rel="noopener">'+t+'</a>';};
+  return '<details><summary>ℹ️ Criterios por persona (investigación)</summary>'+
+  '<p><b>Abel</b> – plan bajo en carbohidratos y alto en grasa, sin gluten, sin legumbres ni maní; cenas sin vaca/cerdo; papa, batata y zapallo solo en almuerzos; fruta 1–2 por día, no de noche; cena antes de las 20:30–21.<br>'+
+  '⚠️ Por el ácido úrico: se excluyen vísceras (hígado) y mariscos, y se prefieren lácteos, huevos, verduras y porciones moderadas de carne; evitar alcohol y azúcar/fructosa y tomar mucha agua ('+L('Mayo Clinic','https://www.mayoclinic.org/diseases-conditions/gout/in-depth/gout-diet/art-20048524')+'). Al empezar una dieta muy baja en carbohidratos el ácido úrico puede subir transitoriamente ('+L('Virta Health, fuente comercial','https://www.virtahealth.com/faq/keto-gout')+'): consultalo con tu médico o nutricionista.</p>'+
+  '<p><b>Belén</b> – alimentos reales, sin gluten, ≥2 huevos por comida principal, legumbres y pseudocereales, fruta ≤2/día. Las comidas son vegetarianas (huevo y lácteos sí). Cuidar hierro, B12 y proteína ('+L('Coeliac UK','https://www.coeliac.org.uk/')+').</p>'+
+  '<p><b>Dante</b> – solo preparaciones simples y conocidas; se enriquece sin forzar (ralladito nutritivo, semillas molidas, pancitos, chipá), misma estrategia en ambas casas, 2,5 l de agua y bajar de a poco las galletitas dulces. Se usan alimentos “puente” parecidos a los que ya acepta ('+L('food chaining, Akron Children’s','https://www.akronchildrens.org/')+'). Sin presionar ni engañar.</p>'+
+  '<p><b>Isa</b> – sin pauta propia: plan equilibrado según las Guías Alimentarias para la Población Argentina ('+L('GAPA','https://www.argentina.gob.ar/salud/alimentacion-saludable')+'): mitad verduras, proteínas, cereales integrales y agua. Cualquier comida sin vísceras.</p>'+
+  '<p>Al elegir varias personas se muestran solo comidas que sirven a todas. Las reglas son automáticas por ingrediente y se pueden ajustar.</p></details>';
 }
 function renderTF(id,key,fn,all){
   var opts=(all?[['T','Todas']]:[]).concat([['A','Almuerzo'],['C','Cena'],['M','Merienda']]);
@@ -272,8 +209,7 @@ function renderTF(id,key,fn,all){
 function renderCList(){
   var q=S.q.toLowerCase().trim();
   var l=MEALS.filter(function(m){
-    if(!fits(m))return false;
-    if(S.ctype!=='T'&&m.type.indexOf(S.ctype)<0)return false;
+    if(!fits(m,S.ctype))return false;
     if(q&&(m.name.toLowerCase().indexOf(q)<0&&!m.ings.some(function(i){return i.n.toLowerCase().indexOf(q)>=0;})))return false;
     return true;
   });
@@ -312,11 +248,21 @@ function copyList(){
 /* ---------- HOY: ruleta + tengo en casa ---------- */
 const wheel={items:[],rot:0,result:null,spinning:false};
 function newWheel(){
-  var p=MEALS.filter(function(m){return m.type.indexOf(S.htype)>=0&&fits(m);});
+  var p=pool(S.htype);
   wheel.items=shuffle(p,Math.random).slice(0,12);wheel.result=null;
 }
+function todayCard(){
+  var ws=iso(weekStart(0)),wm=weekMeals(ws),d=(new Date().getDay()+6)%7,dt=new Date();
+  var h='<div class="card day today"><div class="dn">📅 Hoy · '+DAYS[d]+' '+fd(dt)+'</div>';
+  ['A','M','C'].forEach(function(slot){
+    var x=wm.find(function(y){return y.d===d&&y.slot===slot;});
+    if(x&&x.m)h+='<div class="slot"><div class="sl">'+SLOTN[slot]+'</div><div class="sn" onclick="showMeal('+x.m.id+')">'+x.m.name+'</div><button class="ic" onclick="swap(\''+ws+'\','+d+',\''+slot+'\')">🔄</button></div>';
+    else h+='<div class="slot"><div class="sl">'+SLOTN[slot]+'</div><div class="sn mut">Sin opciones para esta combinación</div></div>';
+  });
+  return h+'<div class="mut" style="margin-top:6px">Tocá una comida para ver ingredientes · 🔄 para cambiarla</div></div>';
+}
 function viewHoy(){
-  var h='<div class="sub"><button class="'+(S.hsub==='ruleta'?'on':'')+'" onclick="S.hsub=\'ruleta\';newWheel();viewHoy()">🎡 Ruleta</button><button class="'+(S.hsub==='casa'?'on':'')+'" onclick="S.hsub=\'casa\';viewHoy()">🧺 Tengo en casa</button></div>';
+  var h=todayCard()+'<div class="sub"><button class="'+(S.hsub==='ruleta'?'on':'')+'" onclick="S.hsub=\'ruleta\';newWheel();viewHoy()">🎡 Ruleta</button><button class="'+(S.hsub==='casa'?'on':'')+'" onclick="S.hsub=\'casa\';viewHoy()">🧺 Tengo en casa</button></div>';
   h+='<div class="tf" id="ptf"></div>';
   if(S.hsub==='ruleta'){
     h+='<div class="wheelwrap"><div class="ptr"></div><canvas id="wheel" width="600" height="600"></canvas></div>';
@@ -390,7 +336,7 @@ function renderChips(){
 function renderRes(){
   var el=$('#pres');if(!el)return;
   if(!S.pantry.length){el.innerHTML='<div class="mut">Marcá lo que tenés y te armo opciones de menú.</div>';return;}
-  var l=MEALS.filter(function(m){return fits(m)&&(S.ptype==='T'||m.type.indexOf(S.ptype)>=0);}).map(function(m){
+  var l=MEALS.filter(function(m){return fits(m,S.ptype);}).map(function(m){
     var have=m.ings.filter(function(i){return S.pantry.indexOf(i.n)>=0;}).length;
     var miss=m.ings.filter(function(i){return S.pantry.indexOf(i.n)<0;}).map(function(i){return i.n;});
     return{m:m,have:have,miss:miss,r:have/m.ings.length};
@@ -412,7 +358,7 @@ function renderHeader(){
     return '<button class="pf'+(on?' on':'')+'" style="'+(on?'background:'+p.c+';border-color:'+p.c:'border-color:'+p.c)+'" onclick="toggleProf(\''+p.k+'\')">'+p.n+'</button>';
   }).join('');
 }
-const TABS=[['semana','🗓️','Semana'],['comidas','🍽️','Comidas'],['compras','🛒','Compras'],['hoy','🎲','Hoy']];
+const TABS=[['hoy','🎲','Hoy'],['semana','🗓️','Semana'],['comidas','🍽️','Comidas'],['compras','🛒','Compras']];
 function renderNav(){
   $('#nav').innerHTML=TABS.map(function(t){return '<button class="'+(S.tab===t[0]?'on':'')+'" onclick="S.tab=\''+t[0]+'\';render()"><span>'+t[1]+'</span>'+t[2]+'</button>';}).join('');
 }
