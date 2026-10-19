@@ -357,28 +357,59 @@ function showResult(){
   el.innerHTML=m?'<div class="card meal" onclick="showMeal('+m.id+')"><div class="mut">Hoy toca…</div><b style="font-size:18px">'+m.name+'</b>'+badges(m)+'<div class="mut" style="margin-top:6px">Tocá para ver ingredientes</div></div>':'';
 }
 function togglePantry(n){var i=S.pantry.indexOf(n);if(i>=0)S.pantry.splice(i,1);else S.pantry.push(n);save();renderChips();renderRes();}
+/* Grupos: lo que marcás en "Tengo en casa" cubre a todos los de su grupo */
+const GROUPS={
+  'Pollo / pavita':['Pollo','Pavita'],
+  'Carne vacuna':['Carne vacuna','Carne picada'],
+  'Pescado':['Pescado blanco','Salmón'],
+  'Mariscos':['Camarones','Mejillones'],
+  'Queso':['Queso semiduro','Queso fresco','Muzzarella','Ricota','Queso rallado'],
+  'Harinas y rebozadores':['Harina de almendras','Harina de trigo','Harina de garbanzos','Fécula de mandioca','Pan rallado','Salvado de avena'],
+  'Arroz':['Arroz integral','Arroz yamaní'],
+  'Fideos':['Fideos sin gluten','Fideos comunes','Fideos de legumbres'],
+  'Quinoa, mijo y otros cereales':['Quinoa','Mijo','Trigo sarraceno','Amaranto'],
+  'Legumbres':['Lentejas','Garbanzos','Porotos','Hummus'],
+  'Frutos secos':['Frutos secos','Nueces','Almendras'],
+  'Fruta':['Fruta de estación','Manzana','Banana','Frutos rojos'],
+  'Espinaca / acelga':['Espinaca','Acelga'],
+  'Lechuga / rúcula':['Lechuga','Rúcula'],
+  'Brócoli / coliflor':['Brócoli','Coliflor'],
+  'Cebolla / puerro / verdeo':['Cebolla','Puerro','Verdeo'],
+  'Papa / batata':['Papa','Batata']
+};
+const OPCIONAL=['Semillas (mix)','Sésamo molido','Levadura nutricional','Coco rallado','Cacao amargo','Manteca','Queso rallado'];
+const G2={};Object.keys(GROUPS).forEach(function(g){GROUPS[g].forEach(function(n){G2[n]=g;});});
+function gOf(n){return G2[n]||n;}
+S.pantry=S.pantry.map(gOf).filter(function(v,i,a){return a.indexOf(v)===i;});
 function renderChips(){
   var q=S.hq.toLowerCase().trim(),map={};
-  MEALS.forEach(function(m){m.ings.forEach(function(i){map[i.n]=i.c;});});
+  MEALS.forEach(function(m){m.ings.forEach(function(i){if(OPCIONAL.indexOf(i.n)<0||G2[i.n])map[gOf(i.n)]=i.c;});});
   var h='';
   Object.keys(CATS).forEach(function(c){
     var l=Object.keys(map).filter(function(n){return map[n]===c&&(!q||n.toLowerCase().indexOf(q)>=0);}).sort();
     if(!l.length)return;
-    h+='<div class="cat">'+CATS[c]+'</div><div class="chips">'+l.map(function(n){return '<button class="chip'+(S.pantry.indexOf(n)>=0?' on':'')+'" data-n="'+n+'" onclick="togglePantry(this.dataset.n)">'+n+'</button>';}).join('')+'</div>';
+    h+='<div class="cat">'+CATS[c]+'</div><div class="chips">'+l.map(function(n){return '<button class="chip'+(S.pantry.indexOf(n)>=0?' on':'')+'" data-n="'+n.replace(/"/g,'')+'" onclick="togglePantry(this.dataset.n)">'+n+'</button>';}).join('')+'</div>';
   });
   $('#pchips').innerHTML=h;
 }
 function renderRes(){
   var el=$('#pres');if(!el)return;
-  if(!S.pantry.length){el.innerHTML='<div class="mut">Marcá lo que tenés y te armo opciones de menú.</div>';return;}
-  var l=MEALS.filter(function(m){return fits(m,S.ptype);}).map(function(m){
-    var have=m.ings.filter(function(i){return S.pantry.indexOf(i.n)>=0;}).length;
-    var miss=m.ings.filter(function(i){return S.pantry.indexOf(i.n)<0;}).map(function(i){return i.n;});
-    return{m:m,have:have,miss:miss,r:have/m.ings.length};
-  }).filter(function(x){return x.have>0;}).sort(function(a,b){return b.r-a.r||a.miss.length-b.miss.length;}).slice(0,15);
-  el.innerHTML=l.length?l.map(function(x){
-    return '<div class="card meal" onclick="showMeal('+x.m.id+')"><b>'+x.m.name+'</b>'+badges(x.m)+' '+(x.miss.length?'<span class="mut">Tenés '+x.have+' de '+x.m.ings.length+'</span><div class="mut">Te falta: '+x.miss.join(', ')+'</div>':'<span class="ok">✅ Tenés todo</span>')+'</div>';
-  }).join(''):'<div class="mut">Con esos ingredientes no encuentro comidas para este perfil. Probá sumar más.</div>';
+  if(!S.pantry.length){el.innerHTML='<div class="mut">Marcá lo que tenés y te armo opciones de menú. Sal, aceite y especias se dan por sabidos.</div>';return;}
+  var need=Math.min(2,S.pantry.length);
+  var all=MEALS.filter(function(m){return fits(m,S.ptype);}).map(function(m){
+    var req=m.ings.filter(function(i){return OPCIONAL.indexOf(i.n)<0;});
+    var gs=[];req.forEach(function(i){var g=gOf(i.n);if(gs.indexOf(g)<0)gs.push(g);});
+    var have=gs.filter(function(g){return S.pantry.indexOf(g)>=0;});
+    var miss=gs.filter(function(g){return S.pantry.indexOf(g)<0;});
+    return{m:m,have:have.length,miss:miss,tot:gs.length};
+  }).filter(function(x){return x.have>=need;});
+  var ya=all.filter(function(x){return !x.miss.length;}).sort(function(a,b){return b.have-a.have;});
+  var casi=all.filter(function(x){return x.miss.length&&x.miss.length<=2;}).sort(function(a,b){return a.miss.length-b.miss.length||b.have-a.have;});
+  function card(x){return '<div class="card meal" onclick="showMeal('+x.m.id+')"><b>'+x.m.name+'</b>'+badges(x.m)+(x.miss.length?'<div class="mut">Te falta: '+x.miss.join(', ')+'</div>':'')+'</div>';}
+  var h='';
+  if(ya.length)h+='<div class="cat ok">✅ Podés hacerlas ya ('+ya.length+')</div>'+ya.slice(0,25).map(card).join('');
+  if(casi.length)h+='<div class="cat">🛒 Casi: te falta 1 o 2 cosas ('+casi.length+')</div>'+casi.slice(0,25).map(card).join('');
+  el.innerHTML=h||'<div class="mut">Con eso no encuentro comidas para este perfil. Probá sumar más ingredientes.</div>';
 }
 
 /* ===================== NAV / PERFILES ===================== */
