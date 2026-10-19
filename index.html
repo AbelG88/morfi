@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Morfi Familiar</title>
+<style>
+:root{--bg:#f8fafc;--card:#fff;--tx:#0f172a;--mut:#64748b;--pri:#0d9488;--bd:#e2e8f0;--soft:#f1f5f9}
+@media(prefers-color-scheme:dark){:root{--bg:#0b1220;--card:#131c2e;--tx:#e5e7eb;--mut:#94a3b8;--bd:#24304a;--soft:#1a2540}}
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--tx);padding-bottom:84px}
+header{position:sticky;top:0;z-index:20;background:var(--card);border-bottom:1px solid var(--bd);padding:10px 12px 8px}
+h1{font-size:17px;margin:0 0 8px}
+.profs{display:flex;gap:6px;flex-wrap:wrap}
+.pf{border:2px solid var(--bd);background:var(--card);color:var(--tx);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:600;cursor:pointer}
+.pf.on{color:#fff}
+main{max-width:760px;margin:0 auto;padding:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:12px;margin-bottom:10px}
+.bar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.bar button,.btn,.sub button,.tf button{border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;padding:8px 12px;font-size:14px;cursor:pointer}
+.btn.pri{background:var(--pri);color:#fff;border-color:var(--pri);font-weight:700}
+.btn{margin:0 6px 8px 0}
+.day{padding:10px 12px}
+.day.today{border-color:var(--pri);box-shadow:0 0 0 2px var(--pri) inset}
+.dn{font-weight:800;font-size:14px;margin-bottom:6px}
+.slot{display:flex;align-items:center;gap:8px;padding:6px 0;border-top:1px dashed var(--bd)}
+.sl{width:70px;font-size:11px;font-weight:800;text-transform:uppercase;color:var(--mut);flex:none}
+.sn{flex:1;font-size:14px;cursor:pointer}
+.ic{border:none;background:var(--soft);border-radius:8px;padding:6px 8px;cursor:pointer;color:var(--tx)}
+.warn{background:#fef3c7;color:#78350f;border-radius:10px;padding:8px 10px;font-size:13px;margin-bottom:10px}
+.pb{display:inline-block;color:#fff;border-radius:6px;font-size:11px;font-weight:800;padding:1px 6px;margin-right:3px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--bd);background:var(--soft);color:var(--tx);border-radius:999px;padding:6px 10px;font-size:13px;cursor:pointer}
+.chip.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.tf,.sub{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.tf button.on,.sub button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+input[type=text]{width:100%;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:15px;margin-bottom:10px}
+.meal{cursor:pointer}
+.meal b{display:block;margin-bottom:4px;font-size:15px}
+.mut{color:var(--mut);font-size:12px}
+.cat{font-weight:800;font-size:13px;margin:12px 0 4px}
+.it{display:flex;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--bd);font-size:15px}
+.it.done span{text-decoration:line-through;color:var(--mut)}
+.it input{width:20px;height:20px;accent-color:var(--pri)}
+.it .q{margin-left:auto;font-weight:700}
+nav{position:fixed;bottom:0;left:0;right:0;display:flex;background:var(--card);border-top:1px solid var(--bd);padding-bottom:env(safe-area-inset-bottom);z-index:30}
+nav button{flex:1;border:none;background:none;color:var(--mut);padding:10px 0 8px;font-size:11px;cursor:pointer}
+nav button span{display:block;font-size:20px}
+nav button.on{color:var(--pri);font-weight:800}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:flex-end;justify-content:center;z-index:50}
+#modal.show{display:flex}
+#mbox{background:var(--card);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:16px;max-height:85vh;overflow:auto}
+.wheelwrap{position:relative;max-width:320px;margin:0 auto 10px}
+.wheelwrap canvas{width:100%;height:auto;display:block}
+.ptr{position:absolute;top:-6px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:12px solid transparent;border-right:12px solid transparent;border-top:22px solid #dc2626;z-index:2}
+.res{text-align:center}
+.ok{color:#15803d;font-weight:700}
+details{font-size:13px;color:var(--mut);margin-bottom:10px}
+</style>
+</head>
+<body>
+<header>
+  <h1>🥑 Morfi Familiar</h1>
+  <div class="profs" id="profs"></div>
+</header>
+<main id="main"></main>
+<nav id="nav"></nav>
+<div id="modal" onclick="if(event.target===this)closeModal()"><div id="mbox"></div></div>
+
+<script>
+/* ===================== DATOS ===================== */
+const PROFILES=[
+  {k:'a',n:'Abel',c:'#0d9488'},
+  {k:'b',n:'Belén',c:'#16a34a'},
+  {k:'d',n:'Dante',c:'#d97706'},
+  {k:'i',n:'Isa',c:'#0284c7'}
+];
+const CATS={C:'🥩 Carnes y pescados',V:'🥦 Verduras y frutas',L:'🥚 Lácteos y huevos',A:'🌾 Almacén y semillas'};
+const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+const SLOTN={A:'Almuerzo',C:'Cena',M:'Merienda'};
+
+function ing(s){const p=s.split('|');return{n:p[0],q:parseFloat(p[1]),u:p[2],c:p[3]};}
+function M(id,name,type,tags,ings,tip){return{id:id,name:name,type:type,tags:tags,ings:ings.map(ing),tip:tip||''};}
+
+/* Cantidades por persona. tags: a=Abel b=Belén d=Dante i=Isa. type: A almuerzo, C cena, M merienda/desayuno */
+const MEALS=[
+M(1,'Pollo al horno con bastones de calabaza','A','aid',['Pollo|200|g|C','Zapallo/Calabaza|150|g|V','Cebolla|50|g|V'],'Dante: pisar la calabaza con 1 cdita de sésamo molido.'),
+M(2,'Milanesas de carne al horno con ensalada de rúcula y huevo','A','aid',['Carne vacuna|150|g|C','Huevo|2|u|L','Harina de almendras|30|g|A','Rúcula|40|g|V','Zanahoria|50|g|V'],'Dante: rebozar con almendras y semillas molidas.'),
+M(3,'Hamburguesas caseras con zapallo al horno y queso','A','aid',['Carne picada|150|g|C','Zapallo/Calabaza|150|g|V','Queso semiduro|30|g|L','Huevo|1|u|L'],'Dante: servir la hamburguesa pisada con palta.'),
+M(4,'Hígado encebollado con batata (fría)','A','a',['Hígado|150|g|C','Cebolla|100|g|V','Batata|150|g|V'],''),
+M(5,'Costillitas de cerdo con tortilla de zapallitos','A','ai',['Cerdo|200|g|C','Zapallito/Zucchini|150|g|V','Huevo|2|u|L'],''),
+M(6,'Pastel de papa o zapallo con carne picada y huevo duro','A','aid',['Carne picada|150|g|C','Papa|150|g|V','Huevo|1|u|L','Cebolla|50|g|V'],'Dante: sumar ralladito nutritivo.'),
+M(7,'Asado o vacío con ensalada de zanahoria, huevo y palta','A','aid',['Carne vacuna|200|g|C','Zanahoria|80|g|V','Huevo|1|u|L','Palta|0.5|u|V'],'Dante: carne desmenuzada con puré enriquecido con oliva.'),
+M(8,'Pollo con vegetales asados','A','ai',['Pollo|200|g|C','Zapallito/Zucchini|100|g|V','Zapallo/Calabaza|50|g|V','Cebolla|50|g|V'],''),
+M(9,'Wok de vegetales salteados con pollo','A','ai',['Pollo|150|g|C','Zapallito/Zucchini|100|g|V','Brócoli|80|g|V','Zanahoria|50|g|V','Cebolla|50|g|V'],''),
+M(10,'Tortilla de espinaca con churrasquito de carne','A','ai',['Espinaca|100|g|V','Huevo|2|u|L','Carne vacuna|120|g|C','Cebolla|50|g|V'],''),
+M(11,'Hamburguesas de pollo con tortilla de papas','A','aid',['Pollo|150|g|C','Papa|120|g|V','Huevo|2|u|L','Cebolla|50|g|V'],''),
+M(12,'Pollo desmenuzado con puré mixto y 2 huevos duros','AC','aid',['Pollo|150|g|C','Papa|100|g|V','Zapallo/Calabaza|100|g|V','Huevo|2|u|L'],'Dante: 1 cdita de sésamo molido en el puré.'),
+M(13,'Bastoncitos de pollo al horno con puré de calabaza','AC','aid',['Pollo|150|g|C','Huevo|1|u|L','Harina de almendras|30|g|A','Zapallo/Calabaza|150|g|V'],'Dante: rebozar con coco rallado o sésamo.'),
+M(14,'Ensalada completa (huevo, palta, papa fría, tomate) + hamburguesa de lentejas','A','bi',['Huevo|1|u|L','Palta|0.5|u|V','Papa|100|g|V','Tomate|80|g|V','Lentejas|60|g|A'],''),
+M(15,'Salteado de cebolla y calabaza con queso + hamburguesa de lentejas','A','bi',['Cebolla|100|g|V','Zapallo/Calabaza|100|g|V','Queso semiduro|40|g|L','Lentejas|60|g|A'],''),
+M(16,'Hamburguesas de legumbres con rúcula, tomate y palta','A','bi',['Garbanzos|60|g|A','Rúcula|40|g|V','Tomate|80|g|V','Palta|0.5|u|V','Huevo|1|u|L'],''),
+M(17,'Wok de vegetales y quinoa','A','bi',['Quinoa|60|g|A','Zapallito/Zucchini|100|g|V','Brócoli|80|g|V','Zanahoria|50|g|V','Cebolla|50|g|V'],''),
+M(18,'Ensalada de lechuga, tomate, palta y huevo + 1/4 de tortilla de papas','A','abi',['Lechuga|60|g|V','Tomate|80|g|V','Palta|0.5|u|V','Huevo|2|u|L','Papa|50|g|V'],''),
+M(19,'Tarta individual sin gluten de acelga y muzzarella','AC','bi',['Acelga|120|g|V','Muzzarella|60|g|L','Huevo|2|u|L','Harina de almendras|30|g|A','Cebolla|50|g|V'],''),
+M(20,'Guiso de lentejas con zapallo','A','bi',['Lentejas|80|g|A','Zapallo/Calabaza|100|g|V','Zanahoria|50|g|V','Cebolla|50|g|V','Morrón|30|g|V'],''),
+M(21,'Hamburguesas de mijo y zanahoria con ensalada','A','bdi',['Mijo|60|g|A','Zanahoria|80|g|V','Huevo|1|u|L','Cebolla|50|g|V','Lechuga|40|g|V'],''),
+M(22,'Risotto de hongos con arroz yamaní','A','bi',['Arroz yamaní|70|g|A','Hongos|100|g|V','Cebolla|50|g|V'],''),
+M(23,'Pescado al horno a la cebolla con crema y puré mixto','AC','aid',['Pescado blanco|200|g|C','Cebolla|80|g|V','Crema|30|ml|L','Papa|80|g|V','Zapallo/Calabaza|80|g|V'],''),
+M(24,'Milanesa de cerdo con zanahoria rallada y huevo','A','ai',['Cerdo|150|g|C','Harina de almendras|30|g|A','Zanahoria|80|g|V','Huevo|2|u|L'],''),
+M(25,'Omelette de zapallitos con queso y jamón','AC','aid',['Huevo|3|u|L','Zapallito/Zucchini|100|g|V','Queso semiduro|30|g|L','Jamón cocido|2|u|L'],''),
+M(26,'Pastel de zapallo con queso fresco derretido','AC','abdi',['Zapallo/Calabaza|200|g|V','Queso fresco|50|g|L','Huevo|2|u|L'],'Dante: sumar un hilo de aceite de chía.'),
+M(27,'Revuelto de huevos con vegetales y queso','AC','abdi',['Huevo|3|u|L','Zapallito/Zucchini|80|g|V','Cebolla|40|g|V','Queso fresco|30|g|L'],''),
+M(28,'Suprema de pollo grillada con vegetales al vapor','C','aid',['Pollo|180|g|C','Zapallito/Zucchini|100|g|V','Cebolla|50|g|V'],''),
+M(29,'Merluza al horno con revuelto de zapallitos y huevo','C','ai',['Pescado blanco|200|g|C','Zapallito/Zucchini|100|g|V','Huevo|2|u|L'],''),
+M(30,'Wok de vegetales con pechuga desmenuzada','C','ai',['Pollo|150|g|C','Brócoli|80|g|V','Zanahoria|50|g|V','Zapallito/Zucchini|80|g|V'],''),
+M(31,'Pescado a la cacerola con salsa de tomate, cebolla y morrón','C','ai',['Pescado blanco|200|g|C','Tomate|150|g|V','Cebolla|60|g|V','Morrón|50|g|V'],''),
+M(32,'Pescado al horno sobre cebollas y morrones asados','C','ai',['Pescado blanco|200|g|C','Cebolla|100|g|V','Morrón|80|g|V'],''),
+M(33,'Sopa crema de verduras con queso y huevos poché','C','abdi',['Zapallo/Calabaza|150|g|V','Zanahoria|80|g|V','Cebolla|50|g|V','Queso semiduro|30|g|L','Huevo|2|u|L'],''),
+M(34,'Salteado de zucchini, berenjena y morrón con queso y huevos','C','abi',['Zapallito/Zucchini|100|g|V','Berenjena|100|g|V','Morrón|50|g|V','Cebolla|50|g|V','Queso semiduro|30|g|L','Huevo|2|u|L'],''),
+M(35,'Omelette de zapallitos con queso y ciboulette','C','abdi',['Huevo|3|u|L','Zapallito/Zucchini|100|g|V','Queso semiduro|30|g|L'],''),
+M(36,'Revuelto de huevos con espinaca, cebolla, quinoa y queso fresco','C','bi',['Huevo|2|u|L','Espinaca|80|g|V','Cebolla|40|g|V','Quinoa|50|g|A','Queso fresco|40|g|L'],''),
+M(37,'Budín salado de acelga con queso y harina de almendras','C','abdi',['Acelga|120|g|V','Queso semiduro|40|g|L','Harina de almendras|30|g|A','Huevo|2|u|L'],''),
+M(38,'Revuelto de 3 huevos con zucchini, berenjena y semillas','C','abi',['Huevo|3|u|L','Zapallito/Zucchini|80|g|V','Berenjena|80|g|V','Semillas (mix)|10|g|A'],''),
+M(39,'Tortilla de espinaca y cebolla con ensalada','C','abi',['Espinaca|100|g|V','Cebolla|50|g|V','Huevo|3|u|L','Lechuga|50|g|V','Tomate|60|g|V'],''),
+M(40,'Ensalada de huevo, zanahoria rallada, lentejas y quinoa','C','bi',['Huevo|2|u|L','Zanahoria|80|g|V','Lentejas|50|g|A','Quinoa|40|g|A'],''),
+M(41,'Salteado de brócoli, zapallo, zapallitos y garbanzos con huevo','C','bi',['Brócoli|80|g|V','Zapallo/Calabaza|60|g|V','Zapallito/Zucchini|60|g|V','Garbanzos|50|g|A','Huevo|1|u|L','Cebolla|40|g|V'],''),
+M(42,'Tortilla de acelga con calabaza al horno y queso','C','abi',['Acelga|100|g|V','Huevo|2|u|L','Zapallo/Calabaza|120|g|V','Queso semiduro|30|g|L'],''),
+M(43,'Vegetales horneados con tortilla de papa','C','abdi',['Zapallito/Zucchini|100|g|V','Berenjena|80|g|V','Cebolla|50|g|V','Papa|100|g|V','Huevo|2|u|L'],''),
+M(44,'Fideos sin gluten con ralladito nutritivo y huevo','AC','bdi',['Fideos sin gluten|80|g|A','Huevo|1|u|L','Sésamo molido|15|g|A','Levadura nutricional|10|g|A','Queso semiduro|20|g|L'],'Ralladito nutritivo: sésamo molido + fruto seco + levadura nutricional + sal.'),
+M(45,'Pizza de fainá con queso y vegetales rallados','C','bdi',['Harina de garbanzos|70|g|A','Queso semiduro|40|g|L','Zanahoria|40|g|V','Zapallito/Zucchini|40|g|V'],''),
+M(46,'Ensalada de atún con huevo y palta','C','ai',['Atún|100|g|C','Huevo|2|u|L','Palta|0.5|u|V','Lechuga|50|g|V','Tomate|60|g|V'],''),
+M(47,'Curry de vegetales y garbanzos con arroz yamaní','C','bi',['Garbanzos|60|g|A','Arroz yamaní|60|g|A','Zapallito/Zucchini|80|g|V','Zanahoria|50|g|V','Cebolla|50|g|V'],''),
+M(48,'Hongos salteados con huevo y espinaca','C','abi',['Hongos|120|g|V','Espinaca|80|g|V','Huevo|2|u|L','Cebolla|40|g|V'],''),
+M(49,'Milanesa de pollo al horno con puré de calabaza','C','aid',['Pollo|150|g|C','Harina de almendras|30|g|A','Huevo|1|u|L','Zapallo/Calabaza|150|g|V'],'Dante: rebozado enriquecido con semillas molidas.'),
+M(50,'Huevos revueltos con queso fresco + 1 fruta','M','abdi',['Huevo|2|u|L','Queso fresco|30|g|L','Fruta de estación|1|u|V'],''),
+M(51,'Pancake de banana y coco','M','abdi',['Banana|1|u|V','Huevo|2|u|L','Coco rallado|20|g|A'],''),
+M(52,'2 huevos duros + 5 nueces + 1 fruta','M','abi',['Huevo|2|u|L','Nueces|15|g|A','Fruta de estación|1|u|V'],''),
+M(53,'Tostada de masa madre con palta y huevo','M','adi',['Pan de masa madre|1|u|A','Palta|0.5|u|V','Huevo|1|u|L'],''),
+M(54,'Yogur natural con fruta, frutos secos y semillas','M','abdi',['Yogur natural|150|g|L','Fruta de estación|1|u|V','Frutos secos|15|g|A','Semillas (mix)|10|g|A'],'Dante: frutos secos y semillas molidos.'),
+M(55,'Pancake salado de avena relleno de palta o queso','M','adi',['Huevo|1|u|L','Salvado de avena|15|g|A','Palta|0.5|u|V','Queso fresco|20|g|L'],''),
+M(56,'Chipá saludable (2 unidades) + fruta','M','bdi',['Fécula de mandioca|40|g|A','Batata|40|g|V','Ricota|15|g|L','Huevo|1|u|L','Queso semiduro|15|g|L','Fruta de estación|1|u|V'],''),
+M(57,'Budín de coco y zanahoria','M','abdi',['Zanahoria|40|g|V','Coco rallado|30|g|A','Huevo|1|u|L','Manteca|10|g|L'],''),
+M(58,'Brownie sin harinas + huevo duro','M','abdi',['Cacao amargo|12|g|A','Manteca|20|g|L','Huevo|2|u|L','Coco rallado|5|g|A'],''),
+M(59,'Pancitos sin harina con palta','M','abdi',['Huevo|1|u|L','Yogur natural|15|g|L','Harina de almendras|30|g|A','Palta|0.5|u|V'],''),
+M(60,'Crackers de semillas con queso','M','abdi',['Semillas (mix)|25|g|A','Queso semiduro|30|g|L'],''),
+M(61,'Talitas de queso (garbanzo y almendras)','M','bdi',['Harina de garbanzos|25|g|A','Harina de almendras|25|g|A','Queso semiduro|15|g|L','Huevo|0.5|u|L'],''),
+M(62,'Galleta de arroz con hummus y huevo','M','bi',['Galleta de arroz|2|u|A','Hummus|30|g|A','Huevo|1|u|L'],''),
+M(63,'Trufas de avena, ciruela y coco','M','di',['Salvado de avena|15|g|A','Ciruelas pasas|30|g|V','Coco rallado|15|g|A','Harina de almendras|15|g|A'],''),
+M(64,'Infusión con crema + tostada con palta y huevo','M','ai',['Crema|15|ml|L','Pan de masa madre|1|u|A','Palta|0.5|u|V','Huevo|1|u|L'],''),
+M(65,'Frutos secos + queso gouda + huevo duro','M','abi',['Frutos secos|20|g|A','Queso semiduro|30|g|L','Huevo|1|u|L'],'')
+];
+
+/* ===================== ESTADO ===================== */
+const store={
+  get:function(k,d){try{var v=localStorage.getItem('morfi_'+k);return v?JSON.parse(v):d;}catch(e){return d;}},
+  set:function(k,v){try{localStorage.setItem('morfi_'+k,JSON.stringify(v));}catch(e){}}
+};
+const S={
+  sel:store.get('sel',['a']),
+  plans:store.get('plans',{}),
+  checked:store.get('checked',{}),
+  pantry:store.get('pantry',[]),
+  tab:'semana',off:0,ctype:'T',q:'',hsub:'ruleta',htype:'A',hq:'',ptype:'T'
+};
+function save(){store.set('sel',S.sel);store.set('plans',S.plans);store.set('checked',S.checked);store.set('pantry',S.pantry);}
+const $=function(s){return document.querySelector(s);};
+
+/* ===================== UTILIDADES ===================== */
+function hash(s){var h=2166136261;for(var i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+function rng(a){return function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function shuffle(arr,r){var a=arr.slice();for(var i=a.length-1;i>0;i--){var j=Math.floor(r()*(i+1));var t=a[i];a[i]=a[j];a[j]=t;}return a;}
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function fd(d){return d.getDate()+'/'+(d.getMonth()+1);}
+function weekStart(){var x=new Date();x.setHours(0,0,0,0);x.setDate(x.getDate()-((x.getDay()+6)%7)+S.off*7);return x;}
+function fits(m){return S.sel.every(function(t){return m.tags.indexOf(t)>=0;});}
+function pool(slot){return MEALS.filter(function(m){return m.type.indexOf(slot)>=0&&fits(m);});}
+function badges(m){return PROFILES.filter(function(p){return m.tags.indexOf(p.k)>=0;}).map(function(p){return '<span class="pb" style="background:'+p.c+'">'+p.n[0]+'</span>';}).join('');}
+function fmtQ(q,u){
+  if(u==='u')return Math.ceil(q-1e-9)+' u';
+  if(u==='g'){var g=Math.ceil(q/10)*10;return g>=1000?(g/1000).toFixed(1).replace('.',',')+' kg':g+' g';}
+  if(u==='ml'){var m=Math.ceil(q/10)*10;return m>=1000?(m/1000).toFixed(1).replace('.',',')+' l':m+' ml';}
+  return Math.round(q)+' '+u;
+}
+
+/* ===================== PLAN SEMANAL ===================== */
+function pkey(ws){return ws+'|'+S.sel.slice().sort().join('');}
+function getPlan(ws){var k=pkey(ws);if(!S.plans[k]){S.plans[k]={seed:1,over:{}};save();}return S.plans[k];}
+function weekMeals(ws){
+  var p=getPlan(ws),out=[];
+  ['A','C'].forEach(function(slot){
+    var sh=shuffle(pool(slot),rng(hash(pkey(ws)+slot+p.seed)));
+    for(var d=0;d<7;d++){
+      var m=null,ov=p.over[d+slot];
+      if(ov){m=MEALS.find(function(x){return x.id===ov;})||null;if(m&&(m.type.indexOf(slot)<0||!fits(m)))m=null;}
+      if(!m&&sh.length)m=sh[d%sh.length];
+      out.push({d:d,slot:slot,m:m});
+    }
+  });
+  return out;
+}
+function regen(ws){var p=getPlan(ws);p.seed++;p.over={};save();render();}
+function swap(ws,d,slot){
+  var cur=weekMeals(ws).filter(function(x){return x.slot===slot;});
+  var used={};cur.forEach(function(x){if(x.m)used[x.m.id]=1;});
+  var me=cur.find(function(x){return x.d===d;}).m;
+  var c=pool(slot).filter(function(m){return !used[m.id];});
+  if(!c.length)c=pool(slot).filter(function(m){return !me||m.id!==me.id;});
+  if(!c.length)return;
+  getPlan(ws).over[d+slot]=c[Math.floor(Math.random()*c.length)].id;
+  save();render();
+}
+
+/* ===================== COMPRAS ===================== */
+function shopping(ws){
+  var n=S.sel.length,map={};
+  weekMeals(ws).forEach(function(x){
+    if(!x.m)return;
+    x.m.ings.forEach(function(i){
+      var k=i.n+'|'+i.u;
+      if(!map[k])map[k]={n:i.n,u:i.u,c:i.c,q:0};
+      map[k].q+=i.q*n;
+    });
+  });
+  return Object.keys(map).map(function(k){return map[k];});
+}
+function tick(key,v){if(v)S.checked[key]=1;else delete S.checked[key];save();viewCompras();}
+
+/* ===================== MODAL ===================== */
+function showMeal(id){
+  var m=MEALS.find(function(x){return x.id===id;});if(!m)return;
+  var n=S.sel.length;
+  var h='<div class="bar"><b style="font-size:17px">'+m.name+'</b><button onclick="closeModal()">✕</button></div>';
+  h+='<div style="margin-bottom:8px">'+badges(m)+' <span class="mut">'+(m.type==='AC'?'Almuerzo o cena':SLOTN[m.type])+'</span></div>';
+  h+='<div class="mut" style="margin-bottom:6px">Ingredientes para '+n+' '+(n===1?'persona':'personas')+':</div>';
+  m.ings.forEach(function(i){h+='<div class="it"><span>'+i.n+'</span><span class="q">'+fmtQ(i.q*n,i.u)+'</span></div>';});
+  if(m.tip)h+='<div class="card" style="margin-top:10px;background:var(--soft)">💡 '+m.tip+'</div>';
+  $('#mbox').innerHTML=h;$('#modal').classList.add('show');
+}
+function closeModal(){$('#modal').classList.remove('show');}
+
+/* ===================== VISTAS ===================== */
+function viewSemana(){
+  var ws=weekStart(),wsI=iso(ws),end=new Date(ws);end.setDate(end.getDate()+6);
+  var wm=weekMeals(wsI),today=iso(new Date());
+  var h='<div class="bar"><button onclick="S.off--;render()">‹</button><div style="text-align:center"><b>Semana del '+fd(ws)+' al '+fd(end)+'</b>'+(S.off===0?'<div class="mut">semana actual</div>':'')+'</div><button onclick="S.off++;render()">›</button></div>';
+  var na=pool('A').length,nc=pool('C').length;
+  if(na<7||nc<7)h+='<div class="warn">⚠️ Para esta combinación hay '+na+' almuerzos y '+nc+' cenas posibles, así que algunas comidas se repiten.</div>';
+  h+='<button class="btn pri" onclick="regen(\''+wsI+'\')">🔄 Armar otra semana</button>';
+  for(var d=0;d<7;d++){
+    var dt=new Date(ws);dt.setDate(ws.getDate()+d);
+    h+='<div class="card day'+(iso(dt)===today?' today':'')+'"><div class="dn">'+DAYS[d]+' '+fd(dt)+'</div>';
+    ['A','C'].forEach(function(slot){
+      var x=wm.find(function(y){return y.d===d&&y.slot===slot;});
+      if(x&&x.m)h+='<div class="slot"><div class="sl">'+SLOTN[slot]+'</div><div class="sn" onclick="showMeal('+x.m.id+')">'+x.m.name+'</div><button class="ic" onclick="swap(\''+wsI+'\','+d+',\''+slot+'\')">🔄</button></div>';
+      else h+='<div class="slot"><div class="sl">'+SLOTN[slot]+'</div><div class="sn mut">Sin opciones para esta combinación</div></div>';
+    });
+    h+='</div>';
+  }
+  $('#main').innerHTML=h;
+}
+
+function viewComidas(){
+  var h='<div class="tf" id="tf"></div><input type="text" id="cq" placeholder="Buscar comida o ingrediente…" oninput="S.q=this.value;renderCList()" value="'+S.q.replace(/"/g,'')+'"><div class="mut" id="ccount" style="margin-bottom:8px"></div><div id="clist"></div>';
+  h+='<details><summary>ℹ️ Criterios usados</summary><p><b>Abel:</b> sin legumbres, sin gluten, sin carne vacuna ni cerdo en cenas, mínimo 2 huevos por comida principal.<br><b>Belén:</b> vegetariano, sin gluten, con legumbres y pseudocereales.<br><b>Dante:</b> preparaciones simples y conocidas (puré, milanesa, pollo, huevo, chipá, fideos) para enriquecer sin forzar.<br><b>Isa:</b> sin pauta propia cargada: se asumió plan equilibrado.<br>Las etiquetas de cada comida son una interpretación; se pueden ajustar.</p></details>';
+  $('#main').innerHTML=h;renderTF('tf','ctype','renderCList',true);renderCList();
+}
+function renderTF(id,key,fn,all){
+  var opts=(all?[['T','Todas']]:[]).concat([['A','Almuerzo'],['C','Cena'],['M','Merienda']]);
+  $('#'+id).innerHTML=opts.map(function(o){return '<button class="'+(S[key]===o[0]?'on':'')+'" onclick="S.'+key+'=\''+o[0]+'\';'+(id==='tf'?'viewComidas()':id==='ptf'?'viewHoy()':'viewHoy()')+'">'+o[1]+'</button>';}).join('');
+}
+function renderCList(){
+  var q=S.q.toLowerCase().trim();
+  var l=MEALS.filter(function(m){
+    if(!fits(m))return false;
+    if(S.ctype!=='T'&&m.type.indexOf(S.ctype)<0)return false;
+    if(q&&(m.name.toLowerCase().indexOf(q)<0&&!m.ings.some(function(i){return i.n.toLowerCase().indexOf(q)>=0;})))return false;
+    return true;
+  });
+  $('#ccount').textContent=l.length+' comidas para '+S.sel.map(function(k){return PROFILES.find(function(p){return p.k===k;}).n;}).join(' + ');
+  $('#clist').innerHTML=l.map(function(m){return '<div class="card meal" onclick="showMeal('+m.id+')"><b>'+m.name+'</b>'+badges(m)+' <span class="mut">'+(m.type==='AC'?'Almuerzo o cena':SLOTN[m.type])+'</span></div>';}).join('')||'<div class="mut">No hay comidas que sirvan a todos los seleccionados con ese filtro.</div>';
+}
+
+function viewCompras(){
+  var ws=iso(weekStart()),items=shopping(ws),total=items.length;
+  var done=items.filter(function(i){return S.checked[ws+'|'+i.n+'|'+i.u];}).length;
+  var h='<div class="bar"><b>🛒 Compras de la semana del '+fd(weekStart())+'</b><span class="mut">'+done+' / '+total+'</span></div>';
+  h+='<button class="btn" onclick="copyList()">📋 Copiar lista</button><button class="btn" onclick="resetChecks()">Desmarcar todo</button>';
+  h+='<div class="mut" style="margin:6px 0">Cantidades para '+S.sel.length+' '+(S.sel.length===1?'persona':'personas')+', según la semana armada. Reponer básicos: aceite de oliva, sal, especias.</div>';
+  Object.keys(CATS).forEach(function(c){
+    var l=items.filter(function(i){return i.c===c;}).sort(function(a,b){return a.n.localeCompare(b.n);});
+    if(!l.length)return;
+    h+='<div class="cat">'+CATS[c]+'</div>';
+    l.forEach(function(i){
+      var k=ws+'|'+i.n+'|'+i.u,ch=S.checked[k];
+      h+='<label class="it'+(ch?' done':'')+'"><input type="checkbox" data-k="'+k+'" '+(ch?'checked':'')+' onchange="tick(this.dataset.k,this.checked)"><span>'+i.n+'</span><span class="q">'+fmtQ(i.q,i.u)+'</span></label>';
+    });
+  });
+  $('#main').innerHTML=h;
+}
+function resetChecks(){var ws=iso(weekStart());Object.keys(S.checked).forEach(function(k){if(k.indexOf(ws+'|')===0)delete S.checked[k];});save();viewCompras();}
+function copyList(){
+  var ws=iso(weekStart()),items=shopping(ws),t='Compras semana del '+fd(weekStart())+'\n';
+  Object.keys(CATS).forEach(function(c){
+    var l=items.filter(function(i){return i.c===c;});
+    if(!l.length)return;
+    t+='\n'+CATS[c]+'\n'+l.map(function(i){return '- '+i.n+': '+fmtQ(i.q,i.u);}).join('\n')+'\n';
+  });
+  try{navigator.clipboard.writeText(t);}catch(e){}
+}
+
+/* ---------- HOY: ruleta + tengo en casa ---------- */
+const wheel={items:[],rot:0,result:null,spinning:false};
+function newWheel(){
+  var p=MEALS.filter(function(m){return m.type.indexOf(S.htype)>=0&&fits(m);});
+  wheel.items=shuffle(p,Math.random).slice(0,12);wheel.result=null;
+}
+function viewHoy(){
+  var h='<div class="sub"><button class="'+(S.hsub==='ruleta'?'on':'')+'" onclick="S.hsub=\'ruleta\';newWheel();viewHoy()">🎡 Ruleta</button><button class="'+(S.hsub==='casa'?'on':'')+'" onclick="S.hsub=\'casa\';viewHoy()">🧺 Tengo en casa</button></div>';
+  h+='<div class="tf" id="ptf"></div>';
+  if(S.hsub==='ruleta'){
+    h+='<div class="wheelwrap"><div class="ptr"></div><canvas id="wheel" width="600" height="600"></canvas></div>';
+    h+='<div style="text-align:center;margin-bottom:10px"><button class="btn pri" onclick="spin()">🎲 ¡Girar!</button><button class="btn" onclick="newWheel();viewHoy()">Mezclar opciones</button></div><div class="res" id="wres"></div>';
+  }else{
+    h+='<input type="text" id="hq" placeholder="Buscar ingrediente…" oninput="S.hq=this.value;renderChips()" value="'+S.hq.replace(/"/g,'')+'"><div id="pchips"></div><div style="margin:10px 0"><button class="btn" onclick="S.pantry=[];save();viewHoy()">Limpiar</button></div><div id="pres"></div>';
+  }
+  $('#main').innerHTML=h;
+  renderTF2();
+  if(S.hsub==='ruleta'){drawWheel();showResult();}else{renderChips();renderRes();}
+}
+function renderTF2(){
+  var opts=[['A','Almuerzo'],['C','Cena'],['M','Merienda']];
+  if(S.hsub==='casa')opts.unshift(['T','Todas']);
+  var key=S.hsub==='ruleta'?'htype':'ptype';
+  $('#ptf').innerHTML=opts.map(function(o){return '<button class="'+(S[key]===o[0]?'on':'')+'" onclick="setHType(\''+o[0]+'\')">'+o[1]+'</button>';}).join('');
+}
+function setHType(t){if(S.hsub==='ruleta'){S.htype=t;newWheel();}else{S.ptype=t;}viewHoy();}
+function drawWheel(){
+  var cv=$('#wheel');if(!cv)return;
+  var ctx=cv.getContext('2d'),W=cv.width,R=W/2-6,n=wheel.items.length;
+  ctx.clearRect(0,0,W,W);
+  if(!n){ctx.fillStyle='#94a3b8';ctx.font='bold 26px sans-serif';ctx.textAlign='center';ctx.fillText('Sin opciones',W/2,W/2);return;}
+  var seg=2*Math.PI/n;
+  for(var i=0;i<n;i++){
+    var a=wheel.rot+i*seg;
+    ctx.beginPath();ctx.moveTo(W/2,W/2);ctx.arc(W/2,W/2,R,a,a+seg);ctx.closePath();
+    ctx.fillStyle='hsl('+Math.round(i*360/n)+',65%,52%)';ctx.fill();
+    ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.stroke();
+    ctx.save();ctx.translate(W/2,W/2);ctx.rotate(a+seg/2);
+    ctx.textAlign='right';ctx.fillStyle='#fff';ctx.font='bold 21px sans-serif';
+    var nm=wheel.items[i].name;if(nm.length>20)nm=nm.slice(0,19)+'…';
+    ctx.fillText(nm,R-14,7);ctx.restore();
+  }
+  ctx.beginPath();ctx.arc(W/2,W/2,24,0,2*Math.PI);ctx.fillStyle='#fff';ctx.fill();
+}
+function spin(){
+  if(wheel.spinning||!wheel.items.length)return;
+  wheel.spinning=true;wheel.result=null;showResult();
+  var start=wheel.rot,extra=(5+Math.random()*3)*2*Math.PI,dur=4200,t0=performance.now();
+  function f(t){
+    var p=Math.min(1,(t-t0)/dur),e=1-Math.pow(1-p,3);
+    wheel.rot=start+extra*e;drawWheel();
+    if(p<1)requestAnimationFrame(f);
+    else{
+      wheel.spinning=false;
+      var n=wheel.items.length,seg=2*Math.PI/n,TWO=2*Math.PI;
+      var ang=((-Math.PI/2-wheel.rot)%TWO+TWO)%TWO;
+      wheel.result=wheel.items[Math.floor(ang/seg)%n];showResult();
+    }
+  }
+  requestAnimationFrame(f);
+}
+function showResult(){
+  var el=$('#wres');if(!el)return;
+  var m=wheel.result;
+  el.innerHTML=m?'<div class="card meal" onclick="showMeal('+m.id+')"><div class="mut">Hoy toca…</div><b style="font-size:18px">'+m.name+'</b>'+badges(m)+'<div class="mut" style="margin-top:6px">Tocá para ver ingredientes</div></div>':'';
+}
+function togglePantry(n){var i=S.pantry.indexOf(n);if(i>=0)S.pantry.splice(i,1);else S.pantry.push(n);save();renderChips();renderRes();}
+function renderChips(){
+  var q=S.hq.toLowerCase().trim(),map={};
+  MEALS.forEach(function(m){m.ings.forEach(function(i){map[i.n]=i.c;});});
+  var h='';
+  Object.keys(CATS).forEach(function(c){
+    var l=Object.keys(map).filter(function(n){return map[n]===c&&(!q||n.toLowerCase().indexOf(q)>=0);}).sort();
+    if(!l.length)return;
+    h+='<div class="cat">'+CATS[c]+'</div><div class="chips">'+l.map(function(n){return '<button class="chip'+(S.pantry.indexOf(n)>=0?' on':'')+'" data-n="'+n+'" onclick="togglePantry(this.dataset.n)">'+n+'</button>';}).join('')+'</div>';
+  });
+  $('#pchips').innerHTML=h;
+}
+function renderRes(){
+  var el=$('#pres');if(!el)return;
+  if(!S.pantry.length){el.innerHTML='<div class="mut">Marcá lo que tenés y te armo opciones de menú.</div>';return;}
+  var l=MEALS.filter(function(m){return fits(m)&&(S.ptype==='T'||m.type.indexOf(S.ptype)>=0);}).map(function(m){
+    var have=m.ings.filter(function(i){return S.pantry.indexOf(i.n)>=0;}).length;
+    var miss=m.ings.filter(function(i){return S.pantry.indexOf(i.n)<0;}).map(function(i){return i.n;});
+    return{m:m,have:have,miss:miss,r:have/m.ings.length};
+  }).filter(function(x){return x.have>0;}).sort(function(a,b){return b.r-a.r||a.miss.length-b.miss.length;}).slice(0,15);
+  el.innerHTML=l.length?l.map(function(x){
+    return '<div class="card meal" onclick="showMeal('+x.m.id+')"><b>'+x.m.name+'</b>'+badges(x.m)+' '+(x.miss.length?'<span class="mut">Tenés '+x.have+' de '+x.m.ings.length+'</span><div class="mut">Te falta: '+x.miss.join(', ')+'</div>':'<span class="ok">✅ Tenés todo</span>')+'</div>';
+  }).join(''):'<div class="mut">Con esos ingredientes no encuentro comidas para este perfil. Probá sumar más.</div>';
+}
+
+/* ===================== NAV / PERFILES ===================== */
+function toggleProf(k){
+  var i=S.sel.indexOf(k);
+  if(i>=0){if(S.sel.length>1)S.sel.splice(i,1);}else S.sel.push(k);
+  save();newWheel();render();
+}
+function renderHeader(){
+  $('#profs').innerHTML=PROFILES.map(function(p){
+    var on=S.sel.indexOf(p.k)>=0;
+    return '<button class="pf'+(on?' on':'')+'" style="'+(on?'background:'+p.c+';border-color:'+p.c:'border-color:'+p.c)+'" onclick="toggleProf(\''+p.k+'\')">'+p.n+'</button>';
+  }).join('');
+}
+const TABS=[['semana','🗓️','Semana'],['comidas','🍽️','Comidas'],['compras','🛒','Compras'],['hoy','🎲','Hoy']];
+function renderNav(){
+  $('#nav').innerHTML=TABS.map(function(t){return '<button class="'+(S.tab===t[0]?'on':'')+'" onclick="S.tab=\''+t[0]+'\';render()"><span>'+t[1]+'</span>'+t[2]+'</button>';}).join('');
+}
+function render(){
+  renderHeader();renderNav();
+  if(S.tab==='semana')viewSemana();
+  else if(S.tab==='comidas')viewComidas();
+  else if(S.tab==='compras')viewCompras();
+  else viewHoy();
+  window.scrollTo(0,0);
+}
+newWheel();render();
+</script>
+</body>
+</html>
