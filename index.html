@@ -67,11 +67,16 @@ nav button.on{color:var(--pri);font-weight:800}
 .res{text-align:center}
 .ok{color:#15803d;font-weight:700}
 details{font-size:13px;color:var(--mut);margin-bottom:10px}
+.hrow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.hrow h1{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+textarea{width:100%;padding:10px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:14px;margin:8px 0;font-family:inherit}
+#wstoast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:#0f172a;color:#fff;padding:10px 16px;border-radius:999px;font-size:14px;opacity:0;pointer-events:none;transition:opacity .2s;z-index:80}
+#wstoast.show{opacity:1}
 </style>
 </head>
 <body>
 <header>
-  <h1>🥑 Morfi Familiar</h1>
+  <div class="hrow"><h1 id="ttl">🥑 Morfi Familiar</h1><button class="ic" id="gear" onclick="openSettings()" aria-label="Ajustes">⚙️</button></div>
   <div class="profs" id="profs"></div>
 </header>
 <main id="main"></main>
@@ -79,26 +84,29 @@ details{font-size:13px;color:var(--mut);margin-bottom:10px}
 <div id="modal" onclick="if(event.target===this)closeModal()"><div id="mbox"></div></div>
 
 <script src="data.js"></script>
+<script src="workspace.js"></script>
 <script>
 /* ===================== DATOS (ver data.js) ===================== */
 const CATS={C:'🥩 Carnes y pescados',V:'🥦 Verduras y frutas',L:'🥚 Lácteos y huevos',A:'🌾 Almacén y semillas'};
 const DAYS=['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 const SLOTN={A:'Almuerzo',C:'Cena',M:'Merienda'};
-const MEALS=buildData().MEALS;
+const MEALS=wsMeals();
 
 /* ===================== ESTADO ===================== */
 const store={
-  get:function(k,d){try{var v=localStorage.getItem('morfi_'+k);return v?JSON.parse(v):d;}catch(e){return d;}},
-  set:function(k,v){try{localStorage.setItem('morfi_'+k,JSON.stringify(v));}catch(e){}}
+  get:function(k,d){try{var v=localStorage.getItem(WS.pfx+k);return v?JSON.parse(v):d;}catch(e){return d;}},
+  set:function(k,v){try{localStorage.setItem(WS.pfx+k,JSON.stringify(v));}catch(e){}}
 };
 const S={
-  sel:store.get('sel',['a']),
+  sel:store.get('sel',[PROFILES.length?PROFILES[0].k:'a']),
   plans:store.get('plans',{}),
   checked:store.get('checked',{}),
   pantry:store.get('pantry',[]),
   excl:store.get('excl',{}),
-  tab:'hoy',off:0,ctype:'T',q:'',hsub:'ruleta',htype:'A',hq:'',ptype:'T'
+  tab:wsTab(),off:0,ctype:'T',q:'',hsub:'ruleta',htype:'A',hq:'',ptype:'T'
 };
+S.sel=S.sel.filter(function(k){return PROFILES.some(function(p){return p.k===k;});});
+if(!S.sel.length&&PROFILES.length)S.sel=[PROFILES[0].k];
 function save(){store.set('sel',S.sel);store.set('plans',S.plans);store.set('checked',S.checked);store.set('pantry',S.pantry);store.set('excl',S.excl);}
 const $=function(s){return document.querySelector(s);};
 
@@ -173,7 +181,7 @@ function showMeal(id){
   h+='<div style="margin-bottom:8px">'+badges(m)+' <span class="mut">'+(m.type==='AC'?'Almuerzo o cena':SLOTN[m.type])+'</span></div>';
   h+='<div class="mut" style="margin-bottom:6px">Ingredientes para '+n+' '+(n===1?'persona':'personas')+':</div>';
   m.ings.forEach(function(i){h+='<div class="it"><span>'+i.n+'</span><span class="q">'+fmtQ(i.q*n,i.u)+'</span></div>';});
-  var tp=m.tip;if(S.sel.indexOf('d')>=0&&!tp)tp='Dante: sumar ralladito nutritivo (sésamo molido + levadura nutricional + queso) y ofrecerlo sin presionar.';
+  var tp=m.tip;if(WS.family&&S.sel.indexOf('d')>=0&&!tp)tp='Dante: sumar ralladito nutritivo (sésamo molido + levadura nutricional + queso) y ofrecerlo sin presionar.';
   if(tp)h+='<div class="card" style="margin-top:10px;background:var(--soft)">💡 '+tp+'</div>';
   $('#mbox').innerHTML=h;$('#modal').classList.add('show');
 }
@@ -202,6 +210,7 @@ function viewSemana(){
 
 function viewComidas(){
   var h='<div class="tf" id="tf"></div><input type="text" id="cq" placeholder="Buscar comida o ingrediente…" oninput="S.q=this.value;renderCList()" value="'+S.q.replace(/"/g,'')+'"><div class="mut" id="ccount" style="margin-bottom:8px"></div><div id="clist"></div>';
+  if(!WS.family)h='<label class="it"><input type="checkbox" '+(S.showAll?'checked':'')+' onchange="S.showAll=this.checked;renderCList()"><span>Mostrar todas las comidas del espacio (para editar quién las come)</span></label>'+h;
   h+=exclHTML()+critHTML();
   $('#main').innerHTML=h;renderTF('tf','ctype','renderCList',true);renderCList();
 }
@@ -228,6 +237,7 @@ function exclHTML(){
   return '<details><summary>🚫 Comidas excluidas ('+tot+')</summary>'+(h||'<p>Todavía no excluiste ninguna.</p>')+'</details>';
 }
 function critHTML(){
+  if(!WS.family)return '';
   var L=function(t,u){return '<a href="'+u+'" target="_blank" rel="noopener">'+t+'</a>';};
   return '<details><summary>ℹ️ Criterios por persona (investigación)</summary>'+
   '<p><b>Abel</b> – plan bajo en carbohidratos y alto en grasa, sin gluten, sin legumbres ni maní; cenas sin vaca/cerdo; papa, batata y zapallo solo en almuerzos; fruta 1–2 por día, no de noche; cena antes de las 20:30–21.<br>'+
@@ -244,12 +254,13 @@ function renderTF(id,key,fn,all){
 function renderCList(){
   var q=S.q.toLowerCase().trim();
   var l=MEALS.filter(function(m){
-    if(!fits(m,S.ctype))return false;
+    if(!WS.family&&S.showAll){if(S.ctype!=='T'&&m.type.indexOf(S.ctype)<0)return false;}
+    else if(!fits(m,S.ctype))return false;
     if(q&&(m.name.toLowerCase().indexOf(q)<0&&!m.ings.some(function(i){return i.n.toLowerCase().indexOf(q)>=0;})))return false;
     return true;
   });
-  $('#ccount').textContent=l.length+' comidas para '+S.sel.map(function(k){return PROFILES.find(function(p){return p.k===k;}).n;}).join(' + ');
-  $('#clist').innerHTML=l.map(function(m){return '<div class="card meal" onclick="showMeal('+m.id+')"><button class="ic" style="float:right;margin-left:8px" onclick="event.stopPropagation();askExcl('+m.id+')">🚫 Excluir</button><b>'+m.name+'</b>'+badges(m)+' <span class="mut">'+(m.type==='AC'?'Almuerzo o cena':SLOTN[m.type])+'</span></div>';}).join('')||'<div class="mut">No hay comidas que sirvan a todos los seleccionados con ese filtro.</div>';
+  $('#ccount').textContent=(!WS.family&&S.showAll)?l.length+' comidas en total':l.length+' comidas para '+S.sel.map(function(k){return PROFILES.find(function(p){return p.k===k;}).n;}).join(' + ');
+  $('#clist').innerHTML=l.map(function(m){return '<div class="card meal" onclick="showMeal('+m.id+')"><button class="ic" style="float:right;margin-left:8px" onclick="event.stopPropagation();askExcl('+m.id+')">🚫 Excluir</button>'+(WS.family?'':'<button class="ic" style="float:right;margin-left:6px" onclick="event.stopPropagation();wsEditMeal('+m.id+')">👥</button>')+'<b>'+m.name+'</b>'+badges(m)+' <span class="mut">'+(m.type==='AC'?'Almuerzo o cena':SLOTN[m.type])+'</span></div>';}).join('')||'<div class="mut">No hay comidas que sirvan a todos los seleccionados con ese filtro.</div>';
 }
 
 function viewCompras(){
@@ -420,6 +431,7 @@ function toggleProf(k){
   save();newWheel();render();
 }
 function renderHeader(){
+  wsHeader();
   $('#profs').innerHTML=PROFILES.map(function(p){
     var on=S.sel.indexOf(p.k)>=0;
     return '<button class="pf'+(on?' on':'')+'" style="'+(on?'background:'+p.c+';border-color:'+p.c:'border-color:'+p.c)+'" onclick="toggleProf(\''+p.k+'\')">'+p.n+'</button>';
@@ -435,9 +447,10 @@ function render(){
   else if(S.tab==='comidas')viewComidas();
   else if(S.tab==='compras')viewCompras();
   else viewHoy();
+  wsAfterRender();
   window.scrollTo(0,0);
 }
-newWheel();render();
+if(WS.welcome){wsWelcome();}else{newWheel();render();wsAfterBoot();}
 if('serviceWorker' in navigator){window.addEventListener('load',function(){navigator.serviceWorker.register('sw.js').catch(function(){});});}
 </script>
 </body>
