@@ -146,9 +146,14 @@ function wsPara(d,v,person){
   if(everyone||!keys.length)return d.profiles.map(function(p){return p.k;});
   return keys;
 }
+function wsExplicit(v){
+  if(v==null||v==='')return false;
+  var arr=Array.isArray(v)?v:String(v).split(/[,;]+/);
+  return arr.some(function(n){var c=wsNorm(wsClean(n,20));return c&&!/^(todos|todas|all)$/.test(c);});
+}
 /* Aplica el import sobre d (una copia). Devuelve el informe; no toca el almacenamiento. */
 function wsApplyImport(d,parsed,mode){
-  var rep={added:0,dups:0,omit:[],people:[],low:[]};
+  var rep={added:0,merged:0,dups:0,omit:[],people:[],low:[]};
   function person(n){var had=d.profiles.length,p=wsAddProfile(d,n);if(p&&d.profiles.length>had)rep.people.push(p.n);return p;}
   (parsed.personas||[]).forEach(function(n){
     if(n&&typeof n==='object')n=n.nombre||n.name;
@@ -156,8 +161,15 @@ function wsApplyImport(d,parsed,mode){
     if(!person(n))throw new Error('Se alcanzó el máximo de personas.');
   });
   if(mode==='replace')d.meals=[];
+  var pk=null;
+  if(mode&&String(mode).indexOf('person:')===0){
+    pk=String(mode).slice(7);
+    if(!d.profiles.some(function(p){return p.k===pk;}))throw new Error('Esa persona ya no existe.');
+    d.meals.forEach(function(m){Object.keys(m.ok).forEach(function(s){m.ok[s]=m.ok[s].split(pk).join('');});});
+    d.meals=d.meals.filter(function(m){return Object.keys(m.ok).some(function(s){return m.ok[s].length>0;});});
+  }
   var names={},ingN={};
-  d.meals.forEach(function(m){names[wsNorm(m.name)]=1;m.ings.forEach(function(i){ingN[wsNorm(i.n)]=i.n;});});
+  d.meals.forEach(function(m){names[wsNorm(m.name)]=m;m.ings.forEach(function(i){ingN[wsNorm(i.n)]=i.n;});});
   parsed.comidas.forEach(function(r,idx){
     var label='#'+(idx+1);
     try{
@@ -168,7 +180,13 @@ function wsApplyImport(d,parsed,mode){
       var type=wsMomento(r.momento||r.tipo||r.type);
       if(!type)throw new Error('momento inválido (usá A, C, AC o M)');
       var key=wsNorm(name);
-      if(names[key]){rep.dups++;return;}
+      var pv=r.para!==undefined?r.para:r.for,explicit=wsExplicit(pv);
+      if(names[key]){
+        var ex=names[key],mk=pk&&!explicit?[pk]:(explicit?wsPara(d,pv,person):null),added=false;
+        if(mk)Object.keys(ex.ok).forEach(function(s){mk.forEach(function(k){if(ex.ok[s].indexOf(k)<0){ex.ok[s]+=k;added=true;}});});
+        if(added)rep.merged++;else rep.dups++;
+        return;
+      }
       var ri=r.ingredientes||r.ingredients;
       if(!Array.isArray(ri)||!ri.length)throw new Error('sin ingredientes');
       if(ri.length>40)throw new Error('demasiados ingredientes');
@@ -183,10 +201,10 @@ function wsApplyImport(d,parsed,mode){
         return{n:n,q:u.q,u:u.u,c:wsCat(x.categoria||x.cat||x.c)};
       });
       if(d.meals.length>=WS_MAX_MEALS)throw new Error('se alcanzó el máximo de '+WS_MAX_MEALS+' comidas');
-      var keys=wsPara(d,r.para!==undefined?r.para:r.for,person);
+      var keys=pk&&!explicit?[pk]:wsPara(d,pv,person);
       var ok={};type.split('').forEach(function(s){ok[s]=keys.join('');});
-      d.meals.push({id:d.nextId++,name:name,type:type,ok:ok,ings:ings,tip:wsClean(r.tip||r.consejo,300)});
-      names[key]=1;rep.added++;
+      var nm2={id:d.nextId++,name:name,type:type,ok:ok,ings:ings,tip:wsClean(r.tip||r.consejo,300)};
+      d.meals.push(nm2);names[key]=nm2;rep.added++;
     }catch(e){rep.omit.push(label+': '+e.message);}
   });
   d.profiles.forEach(function(p){
@@ -199,23 +217,33 @@ function wsApplyImport(d,parsed,mode){
 }
 
 /* ---------- backup (mismo formato que el import) ---------- */
-function wsExportObj(){
-  var d=WS.data,nm={};d.profiles.forEach(function(p){nm[p.k]=p.n;});
-  return{espacio:d.name,personas:d.profiles.map(function(p){return p.n;}),comidas:d.meals.map(function(m){
+function wsExportObj(only){
+  var d=wsGet('morfiws_d_'+WS.id,null)||WS.data,nm={};d.profiles.forEach(function(p){nm[p.k]=p.n;});
+  var meals=d.meals;
+  if(only)meals=meals.filter(function(m){return Object.keys(m.ok).some(function(s){return m.ok[s].indexOf(only)>=0;});});
+  return{espacio:d.name,personas:only?[nm[only]]:d.profiles.map(function(p){return p.n;}),comidas:meals.map(function(m){
     var first=Object.keys(m.ok)[0],ks=(m.ok[first]||'').split('');
-    return{nombre:m.name,momento:m.type,para:ks.map(function(k){return nm[k];}).filter(Boolean),
+    return{nombre:m.name,momento:m.type,para:only?[nm[only]]:ks.map(function(k){return nm[k];}).filter(Boolean),
       ingredientes:m.ings.map(function(i){return{nombre:i.n,cantidad:i.q,unidad:i.u,categoria:i.c};}),tip:m.tip||''};
   })};
 }
-function wsExportDL(){
-  var t=JSON.stringify(wsExportObj(),null,1);
+function wsSlug(x){return wsNorm(x).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x';}
+function wsExportName(only){
+  var d=WS.data,pn='';
+  if(only)d.profiles.forEach(function(p){if(p.k===only)pn='-'+wsSlug(p.n);});
+  return 'morfi-'+wsSlug(d.name)+pn+'.json';
+}
+function wsExportDL(only){
+  var obj=wsExportObj(only);
+  if(only&&!obj.comidas.length){wsToast('Esa persona todavía no tiene comidas');return;}
+  var t=JSON.stringify(obj,null,1);
   try{
     var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([t],{type:'application/json'}));
-    a.download='morfi-'+WS.id+'.json';document.body.appendChild(a);a.click();
-    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);wsToast('Backup descargado');
-  }catch(e){wsExportCopy();}
+    a.download=wsExportName(only);document.body.appendChild(a);a.click();
+    setTimeout(function(){URL.revokeObjectURL(a.href);a.remove();},1000);wsToast(only?'Archivo descargado':'Backup descargado');
+  }catch(e){wsExportCopy(only);}
 }
-function wsExportCopy(){wsCopy(JSON.stringify(wsExportObj(),null,1),'Backup copiado');}
+function wsExportCopy(only){wsCopy(JSON.stringify(wsExportObj(only),null,1),only?'JSON copiado':'Backup copiado');}
 
 /* ---------- prompt para la IA ---------- */
 function wsPrompt(){
@@ -298,8 +326,9 @@ function openSettings(){
     var d=WS.data;
     h+='<div class="cat">👥 Personas</div>';
     d.profiles.forEach(function(p){
-      h+='<div class="it"><span class="pb" style="background:'+p.c+'">'+wsEsc(p.n[0])+'</span><span>'+wsEsc(p.n)+'</span><button class="ic" style="margin-left:auto" onclick="wsRemovePerson(\''+p.k+'\')">Quitar</button></div>';
+      h+='<div class="it"><span class="pb" style="background:'+p.c+'">'+wsEsc(p.n[0])+'</span><span>'+wsEsc(p.n)+'</span><button class="ic" style="margin-left:auto" aria-label="Descargar las comidas de '+wsEsc(p.n)+'" onclick="wsExportDL(\''+p.k+'\')">📤 JSON</button><button class="ic" style="margin-left:6px" onclick="wsRemovePerson(\''+p.k+'\')">Quitar</button></div>';
     });
+    h+='<div class="mut" style="margin-top:6px">📤 JSON descarga las comidas de esa persona: podés pasárselas a la IA para ajustarlas y volver a importarlas con “Reemplazar solo las comidas de…”.</div>';
     h+='<div style="margin-top:8px"><button class="btn" onclick="wsAddPersonUI()">➕ Agregar persona</button></div>';
     h+='<div class="cat">🍽️ Comidas ('+d.meals.length+')</div>'+
     '<button class="btn pri" onclick="wsImportUI()">📥 Importar comidas</button><button class="btn" onclick="wsExportDL()">📤 Backup</button><button class="btn" onclick="wsExportCopy()">📋 Copiar backup</button>';
@@ -410,6 +439,8 @@ function wsImportUI(){
   '<label class="btn pri" style="display:inline-block;cursor:pointer">📁 Elegir archivo<input type="file" id="wsfile" hidden onchange="wsReadFile(this)"></label>'+
   '<details style="margin-top:4px"><summary>¿La IA no te dio un archivo? Pegá el texto</summary><textarea id="wsjson" rows="8" placeholder="Pegá acá el JSON…"></textarea></details>';
   if(has)h+='<label class="it"><input type="radio" name="wsmode" value="add" checked><span>Agregar a las que ya tengo (se saltean las repetidas)</span></label>'+
+    '<label class="it"><input type="radio" name="wsmode" value="person"><span>Reemplazar solo las comidas de <select id="wsperson" onfocus="document.querySelector(\'input[value=person]\').checked=true" style="padding:6px;border-radius:8px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font-size:14px">'+
+      WS.data.profiles.map(function(p){return '<option value="'+p.k+'">'+wsEsc(p.n)+'</option>';}).join('')+'</select></span></label>'+
     '<label class="it"><input type="radio" name="wsmode" value="replace"><span>Reemplazar todas (borra las actuales)</span></label>';
   h+='<div id="wsres" style="margin-top:8px"></div><button class="btn pri" onclick="wsDoImport()">Importar</button><button class="btn" onclick="closeModal()">'+(has?'Cancelar':'Importar después')+'</button>';
   wsModal(h);
@@ -429,10 +460,11 @@ function wsReadFile(inp){
 }
 function wsDoImport(){
   var mode='add',r=document.querySelector('input[name=wsmode]:checked');if(r)mode=r.value;
+  if(mode==='person'){var sp=document.getElementById('wsperson');mode='person:'+(sp?sp.value:'');}
   try{
     var parsed=wsParse(document.getElementById('wsjson').value);
     var d=wsClone(),rep=wsApplyImport(d,parsed,mode);
-    if(!rep.added){
+    if(!rep.added&&!rep.merged){
       var why=rep.dups?'Todas las comidas ya existían.':'No se pudo importar ninguna comida.';
       if(rep.omit.length)why+=' '+rep.omit.slice(0,3).join(' · ');
       return wsErr('wsres',why);
@@ -446,6 +478,7 @@ function wsDoImport(){
 function wsReportUI(rep){
   var h='<div class="bar"><b>📥 Importación lista</b><button onclick="closeModal()">✕</button></div>';
   h+='<p class="ok">✅ '+rep.added+' comida'+(rep.added===1?'':'s')+' agregada'+(rep.added===1?'':'s')+'</p>';
+  if(rep.merged)h+='<p class="mut">'+rep.merged+' ya existían: se mantuvieron sus ingredientes y se sumaron las personas indicadas.</p>';
   if(rep.dups)h+='<p class="mut">'+rep.dups+' ya existían y se saltearon.</p>';
   if(rep.people&&rep.people.length)h+='<p class="mut">Personas nuevas: '+rep.people.map(wsEsc).join(', ')+'. Revisá que no sea un error de tipeo.</p>';
   if(rep.low&&rep.low.length)h+='<div class="warn">Pocas opciones (conviene tener 7 o más almuerzos y cenas): '+rep.low.slice(0,8).map(wsEsc).join(' · ')+'</div>';
