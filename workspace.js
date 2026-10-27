@@ -217,8 +217,13 @@ function wsApplyImport(d,parsed,mode){
 }
 
 /* ---------- backup (mismo formato que el import) ---------- */
+function wsSrc(){
+  if(WS.family)return{name:'Familia',profiles:PROFILES.map(function(p){return{k:p.k,n:p.n,c:p.c};}),
+    meals:MEALS.map(function(m){return{name:m.name,type:m.type,ok:m.ok,ings:m.ings,tip:m.tip};})};
+  return wsGet('morfiws_d_'+WS.id,null)||WS.data;
+}
 function wsExportObj(only){
-  var d=wsGet('morfiws_d_'+WS.id,null)||WS.data,nm={};d.profiles.forEach(function(p){nm[p.k]=p.n;});
+  var d=wsSrc(),nm={};d.profiles.forEach(function(p){nm[p.k]=p.n;});
   var meals=d.meals;
   if(only)meals=meals.filter(function(m){return Object.keys(m.ok).some(function(s){return m.ok[s].indexOf(only)>=0;});});
   return{espacio:d.name,personas:only?[nm[only]]:d.profiles.map(function(p){return p.n;}),comidas:meals.map(function(m){
@@ -229,7 +234,7 @@ function wsExportObj(only){
 }
 function wsSlug(x){return wsNorm(x).replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')||'x';}
 function wsExportName(only){
-  var d=WS.data,pn='';
+  var d=wsSrc(),pn='';
   if(only)d.profiles.forEach(function(p){if(p.k===only)pn='-'+wsSlug(p.n);});
   return 'morfi-'+wsSlug(d.name)+pn+'.json';
 }
@@ -333,6 +338,14 @@ function openSettings(){
     h+='<div class="cat">🍽️ Comidas ('+d.meals.length+')</div>'+
     '<button class="btn pri" onclick="wsImportUI()">📥 Importar comidas</button><button class="btn" onclick="wsExportDL()">📤 Backup</button><button class="btn" onclick="wsExportCopy()">📋 Copiar backup</button>';
     h+='<div class="cat">✏️ Nombre del espacio</div><input type="text" id="wsname" maxlength="30" value="'+wsEsc(d.name)+'"><button class="btn" onclick="wsRename()">Guardar nombre</button>';
+  }else{
+    h+='<div class="cat">👥 Personas</div>';
+    PROFILES.forEach(function(p){
+      h+='<div class="it"><span class="pb" style="background:'+p.c+'">'+wsEsc(p.n[0])+'</span><span>'+wsEsc(p.n)+'</span><button class="ic" style="margin-left:auto" aria-label="Descargar las comidas de '+wsEsc(p.n)+'" onclick="wsExportDL(\''+p.k+'\')">📤 JSON</button></div>';
+    });
+    h+='<div class="cat">🍽️ Comidas ('+MEALS.length+')</div>'+
+    '<button class="btn pri" onclick="wsExportDL()">📤 Backup</button><button class="btn" onclick="wsExportCopy()">📋 Copiar backup</button>'+
+    '<div class="mut">Es el espacio base: sus comidas vienen con la app. El backup te sirve para llevarlas a otro espacio o ajustarlas con una IA.</div>';
   }
   h+='<div class="cat">🏠 Mis espacios</div>';
   var others=wsGet('morfiws_list',[]).length>0;
